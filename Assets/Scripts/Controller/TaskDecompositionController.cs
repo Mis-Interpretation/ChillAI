@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Model.TaskDecomposition;
@@ -32,76 +33,111 @@ namespace ChillAI.Controller
 
         AgentProfile TaskProfile => _agentRegistry.GetProfile(AgentRegistry.Ids.TaskDecomposition);
 
-        public async void RequestDecomposition(string taskText)
+        public void CreateBigEvent(string title)
         {
-            if (string.IsNullOrWhiteSpace(taskText))
-                return;
+            if (string.IsNullOrWhiteSpace(title)) return;
+
+            var bigEvent = _taskModel.AddBigEvent(title);
+            _signalBus.Fire(new BigEventChangedSignal(bigEvent.Id, BigEventChangeType.Added));
+            RequestDecomposition(bigEvent.Id);
+        }
+
+        public async void RequestDecomposition(string bigEventId)
+        {
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null) return;
 
             var profile = TaskProfile;
             if (profile == null)
             {
                 var err = "Task agent profile not found in AgentRegistry.";
-                _taskModel.SetError(err);
-                _signalBus.Fire(new TaskDecompositionResultSignal(taskText, err));
+                _taskModel.SetBigEventError(bigEventId, err);
+                _signalBus.Fire(new TaskDecompositionResultSignal(bigEventId, bigEvent.Title, err));
                 return;
             }
 
             if (!_aiService.IsConfigured)
             {
                 var err = "API Key not configured. Please edit config.json.";
-                _taskModel.SetError(err);
-                _signalBus.Fire(new TaskDecompositionResultSignal(taskText, err));
+                _taskModel.SetBigEventError(bigEventId, err);
+                _signalBus.Fire(new TaskDecompositionResultSignal(bigEventId, bigEvent.Title, err));
                 return;
             }
 
-            if (_taskModel.IsProcessing)
-                return;
+            if (bigEvent.IsProcessing) return;
 
             try
             {
-                _taskModel.SetProcessing(true);
+                _taskModel.SetBigEventProcessing(bigEventId, true);
 
-                var rawJson = await _aiService.ChatAsync(profile, taskText);
+                var rawJson = await _aiService.ChatAsync(profile, bigEvent.Title);
                 var subTaskDatas = ParseSubTasks(rawJson);
 
                 var subTasks = new List<SubTask>();
                 foreach (var data in subTaskDatas)
                     subTasks.Add(new SubTask(data.Title, data.Order));
 
-                _taskModel.SetSubTasks(taskText, subTasks);
-                _taskModel.SetProcessing(false);
-                _signalBus.Fire(new TaskDecompositionResultSignal(taskText, (IReadOnlyList<SubTaskData>)subTaskDatas));
+                _taskModel.SetBigEventSubTasks(bigEventId, subTasks);
+                _taskModel.SetBigEventProcessing(bigEventId, false);
+                _signalBus.Fire(new TaskDecompositionResultSignal(
+                    bigEventId, bigEvent.Title, (IReadOnlyList<SubTaskData>)subTaskDatas));
 
-                Debug.Log($"[ChillAI] Task decomposed into {subTasks.Count} subtasks.");
+                Debug.Log($"[ChillAI] Big event '{bigEvent.Title}' decomposed into {subTasks.Count} subtasks.");
             }
             catch (AIServiceException e)
             {
-                _taskModel.SetError(e.Message);
-                _signalBus.Fire(new TaskDecompositionResultSignal(taskText, e.Message));
+                _taskModel.SetBigEventError(bigEventId, e.Message);
+                _signalBus.Fire(new TaskDecompositionResultSignal(bigEventId, bigEvent.Title, e.Message));
                 Debug.LogWarning($"[ChillAI] {e.Message}");
             }
             catch (Exception e)
             {
                 var errorMsg = $"Unexpected error: {e.Message}";
-                _taskModel.SetError(errorMsg);
-                _signalBus.Fire(new TaskDecompositionResultSignal(taskText, errorMsg));
+                _taskModel.SetBigEventError(bigEventId, errorMsg);
+                _signalBus.Fire(new TaskDecompositionResultSignal(bigEventId, bigEvent.Title, errorMsg));
                 Debug.LogError($"[ChillAI] {errorMsg}\n{e.StackTrace}");
             }
         }
 
-        /// <summary>
-        /// Parses subtasks from AI response. Supports:
-        /// 1. JSON Schema mode: {"tasks": ["step1", "step2", ...]}
-        /// 2. Raw array mode:   ["step1", "step2", ...]
-        /// </summary>
+        public void ToggleSubTask(string bigEventId, string subTaskId)
+        {
+            _taskModel.ToggleSubTaskCompletion(bigEventId, subTaskId);
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            var subTask = bigEvent?.SubTasks.FirstOrDefault(s => s.Id == subTaskId);
+            if (subTask != null)
+                _signalBus.Fire(new SubTaskCompletionChangedSignal(bigEventId, subTaskId, subTask.IsCompleted));
+        }
+
+        public void DeleteSubTask(string bigEventId, string subTaskId)
+        {
+            _taskModel.RemoveSubTask(bigEventId, subTaskId);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskRemoved));
+        }
+
+        public void UpdateBigEventTitle(string bigEventId, string newTitle)
+        {
+            if (string.IsNullOrWhiteSpace(newTitle)) return;
+            _taskModel.UpdateBigEventTitle(bigEventId, newTitle);
+        }
+
+        public void UpdateSubTaskTitle(string bigEventId, string subTaskId, string newTitle)
+        {
+            if (string.IsNullOrWhiteSpace(newTitle)) return;
+            _taskModel.UpdateSubTaskTitle(bigEventId, subTaskId, newTitle);
+        }
+
+        public void DeleteBigEvent(string bigEventId)
+        {
+            _taskModel.RemoveBigEvent(bigEventId);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
+        }
+
         static List<SubTaskData> ParseSubTasks(string json)
         {
-            // Try JSON Schema format: {"tasks": ["...", "..."]}
             var schemaWrapper = TryParse<StringTaskListWrapper>(json);
             if (schemaWrapper?.tasks is { Count: > 0 })
                 return ToSubTaskList(schemaWrapper.tasks);
 
-            // Fallback: extract raw JSON array
             var start = json.IndexOf('[');
             var end = json.LastIndexOf(']');
 
@@ -147,6 +183,5 @@ namespace ChillAI.Controller
         {
             public List<string> items;
         }
-
     }
 }

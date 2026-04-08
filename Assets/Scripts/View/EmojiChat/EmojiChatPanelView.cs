@@ -138,11 +138,13 @@ namespace ChillAI.View.EmojiChat
             while (_chatMessages.contentContainer.childCount > _appSettings.maxChatBubbles)
                 _chatMessages.contentContainer.RemoveAt(0);
 
-            // Auto-scroll to bottom (delay to let layout recalculate)
-            _chatMessages.schedule.Execute(() =>
+            // Auto-scroll to bottom after layout recalculates
+            void ScrollToBottom(GeometryChangedEvent evt)
             {
+                _chatMessages.contentContainer.UnregisterCallback<GeometryChangedEvent>(ScrollToBottom);
                 _chatMessages.scrollOffset = new Vector2(0, _chatMessages.contentContainer.layout.height);
-            });
+            }
+            _chatMessages.contentContainer.RegisterCallback<GeometryChangedEvent>(ScrollToBottom);
         }
 
         void UpdateStatus()

@@ -2,24 +2,24 @@
     <ui:Style src="TaskPanel.uss" />
 
     <!-- Toggle Button (always visible) -->
-    <ui:Button name="toggle-btn" class="toggle-btn" text="Task" />
+    <ui:Button name="toggle-btn" class="toggle-btn" text="Todo" />
 
-    <!-- Input + List Panel (toggleable) -->
+    <!-- Main Panel (toggleable) -->
     <ui:VisualElement name="panel" class="panel hidden">
 
-        <!-- Input Area -->
-        <ui:VisualElement class="input-row">
-            <ui:TextField name="task-input" class="task-input" />
-            <ui:Button name="submit-btn" class="submit-btn" text="Go" />
+        <!-- Panel Header -->
+        <ui:VisualElement class="panel-header">
+            <ui:Label class="panel-title" text="待办事项列表" />
+            <ui:Button name="close-btn" class="close-btn" text="&#x2715;" />
         </ui:VisualElement>
 
         <!-- Status / Error -->
         <ui:Label name="status-label" class="status-label" />
 
-        <!-- Loading -->
-        <ui:Label name="loading-label" class="loading-label hidden" text="Thinking..." />
+        <!-- Big Event List (scrollable) -->
+        <ui:ScrollView name="big-event-list" class="big-event-list" />
 
-        <!-- Subtask List -->
-        <ui:ScrollView name="task-list" class="task-list" />
+        <!-- Add Button -->
+        <ui:Button name="add-btn" class="add-btn" text="＋ 新事件" />
     </ui:VisualElement>
 </ui:UXML>

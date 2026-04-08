@@ -4,9 +4,15 @@ namespace ChillAI.Model.TaskDecomposition
 {
     public interface ITaskDecompositionWriter : ITaskDecompositionReader
     {
-        void SetSubTasks(string originalTask, List<SubTask> subTasks);
-        void SetProcessing(bool isProcessing);
-        void SetError(string errorMessage);
+        BigEvent AddBigEvent(string title);
+        void RemoveBigEvent(string bigEventId);
+        void SetBigEventSubTasks(string bigEventId, List<SubTask> subTasks);
+        void SetBigEventProcessing(string bigEventId, bool isProcessing);
+        void SetBigEventError(string bigEventId, string errorMessage);
+        void ToggleSubTaskCompletion(string bigEventId, string subTaskId);
+        void RemoveSubTask(string bigEventId, string subTaskId);
+        void UpdateBigEventTitle(string bigEventId, string newTitle);
+        void UpdateSubTaskTitle(string bigEventId, string subTaskId, string newTitle);
         void Clear();
     }
 }

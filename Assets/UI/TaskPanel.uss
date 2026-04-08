@@ -1,9 +1,9 @@
-/* Hide utility */
+/* ── Utility ── */
 .hidden {
     display: none;
 }
 
-/* Toggle button */
+/* ── Toggle Button ── */
 .toggle-btn {
     position: absolute;
     bottom: 12px;
@@ -23,13 +23,13 @@
     background-color: rgba(60, 60, 60, 0.9);
 }
 
-/* Panel */
+/* ── Panel ── */
 .panel {
     position: absolute;
     bottom: 84px;
     right: 12px;
-    width: 320px;
-    max-height: 420px;
+    width: 340px;
+    max-height: 520px;
     background-color: rgba(20, 20, 25, 0.92);
     border-radius: 12px;
     border-width: 1px;
@@ -37,57 +37,37 @@
     padding: 12px;
 }
 
-/* Input row */
-.input-row {
+/* ── Panel Header ── */
+.panel-header {
     flex-direction: row;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
-.task-input {
-    flex-grow: 1;
-    min-height: 36px;
-    margin-right: 6px;
-    background-color: transparent;
-    border-radius: 6px;
-    border-width: 0;
+.panel-title {
     color: #e0e0e0;
-    font-size: 13px;
-}
-
-.task-input > .unity-text-field__input {
-    background-color: rgba(40, 40, 50, 0.95);
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
-    padding: 4px 8px;
-    min-height: 36px;
-}
-
-.task-input > .unity-text-field__input > .unity-text-element {
-    color: #e0e0e0;
-}
-
-.task-input:focus {
-    border-color: rgba(100, 160, 255, 0.5);
-}
-
-.submit-btn {
-    width: 48px;
-    min-height: 36px;
-    border-radius: 6px;
-    background-color: rgba(80, 140, 255, 0.7);
-    color: #ffffff;
-    font-size: 13px;
+    font-size: 15px;
     -unity-font-style: bold;
+}
+
+.close-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 12px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 13px;
     border-width: 0;
+    -unity-text-align: middle-center;
 }
 
-.submit-btn:hover {
-    background-color: rgba(100, 160, 255, 0.85);
+.close-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
-/* Status & Loading */
+/* ── Status ── */
 .status-label {
     color: rgba(255, 180, 80, 0.9);
     font-size: 11px;
@@ -95,38 +75,286 @@
     white-space: normal;
 }
 
-.loading-label {
-    color: rgba(150, 200, 255, 0.8);
-    font-size: 12px;
-    -unity-font-style: italic;
+/* ── Big Event List ── */
+.big-event-list {
+    flex-grow: 1;
+    max-height: 400px;
+}
+
+/* ── Big Event Card ── */
+.big-event {
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.06);
     margin-bottom: 6px;
 }
 
-/* Task list */
-.task-list {
-    flex-grow: 1;
-    max-height: 300px;
-}
-
-/* Individual task item */
-.task-item {
-    background-color: rgba(255, 255, 255, 0.04);
-    border-radius: 6px;
+.big-event-header {
+    flex-direction: row;
+    align-items: center;
     padding: 8px;
-    margin-bottom: 4px;
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.05);
 }
 
-.task-item-title {
-    color: #e8e8e8;
+.big-event-arrow {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.45);
+    -unity-text-align: middle-center;
+    background-color: transparent;
+    border-width: 0;
+    padding: 0;
+    margin-right: 4px;
+}
+
+.big-event-arrow:hover {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.big-event-title {
+    flex-grow: 1;
+    flex-shrink: 1;
+    color: #e0e0e0;
     font-size: 13px;
     -unity-font-style: bold;
+    white-space: normal;
+}
+
+.big-event-progress {
+    color: rgba(150, 200, 255, 0.8);
+    font-size: 11px;
+    margin-left: 6px;
+    margin-right: 6px;
+    flex-shrink: 0;
+}
+
+.big-event-delete {
+    width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 11px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.big-event-delete:hover {
+    color: rgba(255, 100, 100, 0.9);
+    background-color: rgba(255, 100, 100, 0.1);
+}
+
+/* ── Big Event Content (subtask area) ── */
+.big-event-content {
+    padding-left: 12px;
+    padding-right: 8px;
+    padding-bottom: 8px;
+}
+
+.big-event-loading {
+    color: rgba(150, 200, 255, 0.8);
+    font-size: 11px;
+    -unity-font-style: italic;
+    padding: 4px 0;
+}
+
+.big-event-error {
+    color: rgba(255, 100, 80, 0.9);
+    font-size: 11px;
+    white-space: normal;
+    padding: 4px 0;
+}
+
+/* ── Subtask Item ── */
+.sub-task-item {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 3px 0;
     margin-bottom: 2px;
 }
 
-.task-item-desc {
-    color: rgba(200, 200, 200, 0.7);
-    font-size: 11px;
+.sub-task-checkbox {
+    margin: 0;
+    padding: 0;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.sub-task-checkbox > .unity-toggle__input > .unity-toggle__checkmark {
+    background-color: rgba(40, 40, 50, 0.95);
+    border-color: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    width: 16px;
+    height: 16px;
+    border-width: 1px;
+}
+
+.sub-task-checkbox:checked > .unity-toggle__input > .unity-toggle__checkmark {
+    background-color: rgba(80, 140, 255, 0.7);
+    border-color: rgba(80, 140, 255, 0.9);
+}
+
+.sub-task-title {
+    flex-grow: 1;
+    flex-shrink: 1;
+    color: #d0d0d0;
+    font-size: 12px;
     white-space: normal;
+    margin-left: 6px;
+    margin-right: 4px;
+}
+
+.sub-task-title--completed {
+    color: rgba(255, 255, 255, 0.3);
+    -unity-font-style: italic;
+}
+
+.sub-task-delete {
+    width: 18px;
+    height: 18px;
+    font-size: 9px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.15);
+    border-width: 0;
+    -unity-text-align: middle-center;
+    padding: 0;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+
+.sub-task-delete:hover {
+    color: rgba(255, 100, 100, 0.8);
+}
+
+/* ── Add Button ── */
+.add-btn {
+    background-color: rgba(80, 140, 255, 0.2);
+    color: rgba(255, 255, 255, 0.7);
+    border-radius: 6px;
+    min-height: 32px;
+    margin-top: 8px;
+    border-width: 1px;
+    border-color: rgba(80, 140, 255, 0.25);
+    font-size: 12px;
+}
+
+.add-btn:hover {
+    background-color: rgba(80, 140, 255, 0.35);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* ── Inline Input (for new big event) ── */
+.inline-input-row {
+    flex-direction: row;
+    margin-bottom: 6px;
+    padding: 4px;
+    background-color: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+}
+
+.inline-input {
+    flex-grow: 1;
+    min-height: 30px;
+    margin-right: 4px;
+    background-color: transparent;
+    border-radius: 4px;
+    border-width: 0;
+    color: #e0e0e0;
+    font-size: 12px;
+}
+
+.inline-input > .unity-text-field__input {
+    background-color: rgba(40, 40, 50, 0.95);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    padding: 4px 8px;
+    min-height: 30px;
+}
+
+.inline-input:focus > .unity-text-field__input {
+    border-color: rgba(100, 160, 255, 0.5);
+}
+
+.inline-confirm-btn {
+    width: 36px;
+    min-height: 30px;
+    border-radius: 4px;
+    background-color: rgba(80, 140, 255, 0.6);
+    color: #ffffff;
+    font-size: 12px;
+    -unity-font-style: bold;
+    border-width: 0;
+}
+
+.inline-confirm-btn:hover {
+    background-color: rgba(100, 160, 255, 0.8);
+}
+
+/* ── Inline Edit Field ── */
+.edit-field {
+    flex-grow: 1;
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    background-color: transparent;
+    border-width: 0;
+}
+
+.edit-field > .unity-text-field__input {
+    background-color: rgba(40, 40, 55, 0.95);
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(100, 160, 255, 0.5);
+    padding: 2px 4px;
+    margin: 0;
+    white-space: normal;
+}
+
+.edit-field--big {
+    font-size: 13px;
+    -unity-font-style: bold;
+    color: #e0e0e0;
+}
+
+.edit-field--big > .unity-text-field__input {
+    color: #e0e0e0;
+    font-size: 13px;
+    -unity-font-style: bold;
+}
+
+.edit-field--sub {
+    font-size: 12px;
+    color: #d0d0d0;
+    margin-left: 6px;
+    margin-right: 4px;
+}
+
+.edit-field--sub > .unity-text-field__input {
+    color: #d0d0d0;
+    font-size: 12px;
+}
+
+/* ── Scrollbar ── */
+.big-event-list .unity-scroller--vertical {
+    width: 4px;
+}
+
+.big-event-list .unity-scroller--vertical .unity-base-slider__tracker {
+    background-color: transparent;
+    border-width: 0;
+}
+
+.big-event-list .unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 2px;
+    border-width: 0;
+}
+
+.big-event-list .unity-scroller--vertical .unity-repeat-button {
+    display: none;
 }

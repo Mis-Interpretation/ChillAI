@@ -4,20 +4,23 @@ namespace ChillAI.Core.Signals
 {
     public class TaskDecompositionResultSignal
     {
-        public string OriginalTask { get; }
+        public string BigEventId { get; }
+        public string BigEventTitle { get; }
         public IReadOnlyList<SubTaskData> SubTasks { get; }
         public bool IsError { get; }
         public string ErrorMessage { get; }
 
-        public TaskDecompositionResultSignal(string originalTask, IReadOnlyList<SubTaskData> subTasks)
+        public TaskDecompositionResultSignal(string bigEventId, string bigEventTitle, IReadOnlyList<SubTaskData> subTasks)
         {
-            OriginalTask = originalTask;
+            BigEventId = bigEventId;
+            BigEventTitle = bigEventTitle;
             SubTasks = subTasks;
         }
 
-        public TaskDecompositionResultSignal(string originalTask, string errorMessage)
+        public TaskDecompositionResultSignal(string bigEventId, string bigEventTitle, string errorMessage)
         {
-            OriginalTask = originalTask;
+            BigEventId = bigEventId;
+            BigEventTitle = bigEventTitle;
             SubTasks = new List<SubTaskData>();
             IsError = true;
             ErrorMessage = errorMessage;

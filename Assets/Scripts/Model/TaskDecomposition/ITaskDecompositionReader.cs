@@ -4,9 +4,7 @@ namespace ChillAI.Model.TaskDecomposition
 {
     public interface ITaskDecompositionReader
     {
-        string OriginalTask { get; }
-        IReadOnlyList<SubTask> CurrentSubTasks { get; }
-        bool IsProcessing { get; }
-        string ErrorMessage { get; }
+        IReadOnlyList<BigEvent> BigEvents { get; }
+        BigEvent GetBigEvent(string bigEventId);
     }
 }
