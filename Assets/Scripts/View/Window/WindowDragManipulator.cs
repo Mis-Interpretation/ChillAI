@@ -1,30 +1,30 @@
 using System;
-using ChillAI.Service.Platform;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace ChillAI.View.Window
 {
     /// <summary>
-    /// UIElements manipulator that drags the OS window by tracking
-    /// screen-space cursor delta via Win32 GetCursorPos.
-    /// Attach to any VisualElement (e.g. a panel header) to make it a drag handle.
+    /// UIElements manipulator that drags a VisualElement within the panel
+    /// by applying a transform offset. Attach to a header element; pass the
+    /// panel/container you want to move as moveTarget.
     /// When dragThreshold > 0, short clicks invoke OnClicked instead of dragging.
     /// </summary>
     public class WindowDragManipulator : Manipulator
     {
-        readonly IWindowService _windowService;
+        readonly VisualElement _moveTarget;
         readonly float _dragThreshold;
         bool _isPointerDown;
         bool _isDragging;
-        int _dragStartCursorX, _dragStartCursorY;
-        int _dragStartWindowX, _dragStartWindowY;
+        Vector2 _pointerStart;
+        Vector3 _startPos;
 
         /// <summary>Fires when pointer is released without exceeding the drag threshold.</summary>
         public event Action OnClicked;
 
-        public WindowDragManipulator(IWindowService windowService, float dragThreshold = 0f)
+        public WindowDragManipulator(VisualElement moveTarget, float dragThreshold = 0f)
         {
-            _windowService = windowService;
+            _moveTarget = moveTarget;
             _dragThreshold = dragThreshold;
         }
 
@@ -51,17 +51,11 @@ namespace ChillAI.View.Window
 
             target.CapturePointer(evt.pointerId);
 
-            var (cx, cy) = _windowService.GetCursorScreenPosition();
-            var (wx, wy) = _windowService.GetWindowPosition();
-
-            _dragStartCursorX = cx;
-            _dragStartCursorY = cy;
-            _dragStartWindowX = wx;
-            _dragStartWindowY = wy;
+            _pointerStart = evt.position;
+            _startPos = _moveTarget.transform.position;
             _isPointerDown = true;
             _isDragging = false;
 
-            // No threshold: start dragging immediately
             if (_dragThreshold <= 0f)
             {
                 _isDragging = true;
@@ -73,9 +67,8 @@ namespace ChillAI.View.Window
         {
             if (!_isPointerDown || !target.HasPointerCapture(evt.pointerId)) return;
 
-            var (cx, cy) = _windowService.GetCursorScreenPosition();
-            int dx = cx - _dragStartCursorX;
-            int dy = cy - _dragStartCursorY;
+            float dx = evt.position.x - _pointerStart.x;
+            float dy = evt.position.y - _pointerStart.y;
 
             if (!_isDragging)
             {
@@ -84,7 +77,10 @@ namespace ChillAI.View.Window
                 _isDragging = true;
             }
 
-            _windowService.SetWindowPosition(_dragStartWindowX + dx, _dragStartWindowY + dy);
+            _moveTarget.transform.position = new Vector3(
+                _startPos.x + dx,
+                _startPos.y + dy,
+                _startPos.z);
         }
 
         void OnPointerUp(PointerUpEvent evt)

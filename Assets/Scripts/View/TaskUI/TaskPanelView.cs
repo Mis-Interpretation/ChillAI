@@ -95,7 +95,7 @@ namespace ChillAI.View.TaskUI
             _panel.RegisterCallback<MouseDownEvent>(OnPanelMouseDown);
 
             var header = root.Q<VisualElement>(className: "panel-header");
-            _dragManipulator = new WindowDragManipulator(_windowService);
+            _dragManipulator = new WindowDragManipulator(_panel);
             header.AddManipulator(_dragManipulator);
 
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);

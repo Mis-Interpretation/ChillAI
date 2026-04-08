@@ -13,6 +13,7 @@ namespace ChillAI.View.SystemMenu
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
 
+        VisualElement _wrapper;
         VisualElement _menuBtn;
         VisualElement _menuPopup;
         VisualElement _settingsPanel;
@@ -33,12 +34,18 @@ namespace ChillAI.View.SystemMenu
         {
             var root = GetComponent<UIDocument>().rootVisualElement;
 
+            // Wrap all root children so dragging the menu button moves everything together.
+            _wrapper = new VisualElement { pickingMode = PickingMode.Ignore };
+            while (root.childCount > 0)
+                _wrapper.Add(root[0]);
+            root.Add(_wrapper);
+
             _menuBtn = root.Q("menu-btn");
             _menuPopup = root.Q<VisualElement>("menu-popup");
             _settingsPanel = root.Q<VisualElement>("settings-panel");
 
-            // Menu button: hold to drag window, click to toggle menu
-            _dragManipulator = new WindowDragManipulator(_windowService, dragThreshold: 5f);
+            // Menu button: hold to drag entire menu, click to toggle menu
+            _dragManipulator = new WindowDragManipulator(_wrapper, dragThreshold: 5f);
             _dragManipulator.OnClicked += ToggleMenu;
             _menuBtn.AddManipulator(_dragManipulator);
 
@@ -50,7 +57,7 @@ namespace ChillAI.View.SystemMenu
             root.Q<Button>("settings-close-btn").clicked += CloseSettings;
 
             var settingsHeader = root.Q<VisualElement>(className: "settings-header");
-            _settingsDragManipulator = new WindowDragManipulator(_windowService);
+            _settingsDragManipulator = new WindowDragManipulator(_settingsPanel);
             settingsHeader.AddManipulator(_settingsDragManipulator);
 
             // Settings sliders

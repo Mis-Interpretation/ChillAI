@@ -67,7 +67,7 @@ namespace ChillAI.View.EmojiChat
             _sendBtn.clicked += OnSubmit;
 
             var header = root.Q<VisualElement>(className: "chat-panel-header");
-            _dragManipulator = new WindowDragManipulator(_windowService);
+            _dragManipulator = new WindowDragManipulator(_panel);
             header.AddManipulator(_dragManipulator);
             _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
