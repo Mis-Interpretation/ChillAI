@@ -29,6 +29,11 @@ namespace ChillAI.View.TaskUI
         bool _panelVisible;
         string _selectedBigEventId;
 
+        // Chat-to-task badge
+        Label _badge;
+        int _pendingBadgeCount;
+        IVisualElementScheduledItem _badgeHideSchedule;
+
         // Inline input (shared, only one active at a time)
         VisualElement _inlineInputRow;
 
@@ -69,6 +74,12 @@ namespace ChillAI.View.TaskUI
             _addListBtn = root.Q<Button>("add-list-btn");
             _taskScroll = root.Q<ScrollView>("task-scroll");
 
+            // Create badge overlay on toggle button
+            _badge = new Label("+1");
+            _badge.AddToClassList("toggle-badge");
+            _badge.AddToClassList("hidden");
+            _toggleBtn.Add(_badge);
+
             _toggleBtn.clicked += OnToggle;
             _closeBtn.clicked += OnClose;
             _addListBtn.clicked += OnAddListClicked;
@@ -77,6 +88,7 @@ namespace ChillAI.View.TaskUI
 
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
+            _signalBus?.Subscribe<TaskAddedViaChatSignal>(OnTaskAddedViaChat);
 
             UpdateStatus();
             AutoSelectFirst();
@@ -93,6 +105,7 @@ namespace ChillAI.View.TaskUI
 
             _signalBus?.TryUnsubscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
+            _signalBus?.TryUnsubscribe<TaskAddedViaChatSignal>(OnTaskAddedViaChat);
         }
 
         // ── Panel ──
@@ -101,6 +114,13 @@ namespace ChillAI.View.TaskUI
         {
             _panelVisible = !_panelVisible;
             _panel.EnableInClassList("hidden", !_panelVisible);
+
+            if (_panelVisible)
+            {
+                _badge.AddToClassList("hidden");
+                _pendingBadgeCount = 0;
+                _badgeHideSchedule?.Pause();
+            }
         }
 
         void OnClose()
@@ -534,6 +554,22 @@ namespace ChillAI.View.TaskUI
                 var label = subtaskRow.Q<Label>(className: "sub-task-title");
                 label?.EnableInClassList("sub-task-title--completed", signal.IsCompleted);
             }
+        }
+
+        void OnTaskAddedViaChat(TaskAddedViaChatSignal signal)
+        {
+            if (_panelVisible) return;
+
+            _pendingBadgeCount++;
+            _badge.text = $"+{_pendingBadgeCount}";
+            _badge.RemoveFromClassList("hidden");
+
+            _badgeHideSchedule?.Pause();
+            _badgeHideSchedule = _badge.schedule.Execute(() =>
+            {
+                _badge.AddToClassList("hidden");
+                _pendingBadgeCount = 0;
+            }).StartingIn(5000);
         }
 
         // ── Helpers ──

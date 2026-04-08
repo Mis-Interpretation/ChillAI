@@ -3,6 +3,7 @@ using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Model.BehaviorMapping;
+using ChillAI.Model.ChatHistory;
 using ChillAI.Model.Expression;
 using ChillAI.Model.ProcessMonitor;
 using ChillAI.Model.TaskDecomposition;
@@ -34,6 +35,7 @@ namespace ChillAI.Installers
             Container.DeclareSignal<EmojiChatResponseSignal>().OptionalSubscriber();
             Container.DeclareSignal<BigEventChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<SubTaskCompletionChangedSignal>().OptionalSubscriber();
+            Container.DeclareSignal<TaskAddedViaChatSignal>().OptionalSubscriber();
 
             // ScriptableObject settings (injected as instances)
             Container.BindInstance(appSettings);
@@ -56,6 +58,8 @@ namespace ChillAI.Installers
                 .To<TaskDecompositionModel>().AsSingle();
             Container.Bind(typeof(IUsageTrackingReader), typeof(IUsageTrackingWriter))
                 .To<UsageTrackingModel>().AsSingle();
+            Container.Bind(typeof(IChatHistoryReader), typeof(IChatHistoryWriter))
+                .To<ChatHistoryModel>().AsSingle();
 
             // Services
             Container.Bind<IWindowService>()

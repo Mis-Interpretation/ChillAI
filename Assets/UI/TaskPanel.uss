@@ -343,6 +343,22 @@
     white-space: normal;
 }
 
+/* ── Chat-to-Task Badge ── */
+.toggle-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background-color: rgba(255, 80, 80, 0.95);
+    color: #ffffff;
+    font-size: 11px;
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    padding: 0 4px;
+}
+
 /* ── Scrollbar (both columns) ── */
 .list-scroll .unity-scroller--vertical,
 .task-scroll .unity-scroller--vertical {

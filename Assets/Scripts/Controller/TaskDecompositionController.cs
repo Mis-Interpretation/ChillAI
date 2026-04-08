@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
+using ChillAI.Model.ChatHistory;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Service.AI;
 using UnityEngine;
@@ -16,17 +17,20 @@ namespace ChillAI.Controller
         readonly ITaskDecompositionWriter _taskModel;
         readonly AgentRegistry _agentRegistry;
         readonly SignalBus _signalBus;
+        readonly IChatHistoryWriter _chatHistory;
 
         public TaskDecompositionController(
             IAIService aiService,
             ITaskDecompositionWriter taskModel,
             AgentRegistry agentRegistry,
-            SignalBus signalBus)
+            SignalBus signalBus,
+            IChatHistoryWriter chatHistory)
         {
             _aiService = aiService;
             _taskModel = taskModel;
             _agentRegistry = agentRegistry;
             _signalBus = signalBus;
+            _chatHistory = chatHistory;
 
             _taskModel.Load();
         }
@@ -84,7 +88,10 @@ namespace ChillAI.Controller
             {
                 _taskModel.SetBigEventProcessing(bigEventId, true);
 
-                var rawJson = await _aiService.ChatAsync(profile, bigEvent.Title);
+                var recentHistory = BuildHistoryTuples(profile);
+                var rawJson = await _aiService.ChatAsync(profile, recentHistory, bigEvent.Title);
+                _chatHistory.AddEntry(profile.agentId, "user", bigEvent.Title);
+                _chatHistory.AddEntry(profile.agentId, "assistant", rawJson);
                 var subTaskDatas = ParseSubTasks(rawJson);
 
                 var subTasks = new List<SubTask>();
@@ -150,6 +157,19 @@ namespace ChillAI.Controller
             _taskModel.RemoveBigEvent(bigEventId);
             _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
             _taskModel.Save();
+        }
+
+        List<(string role, string content)> BuildHistoryTuples(AgentProfile profile)
+        {
+            var maxCount = profile.maxHistoryToSend;
+            var entries = maxCount > 0
+                ? _chatHistory.GetRecentHistory(profile.agentId, maxCount)
+                : _chatHistory.GetHistory(profile.agentId);
+
+            var result = new List<(string role, string content)>(entries.Count);
+            foreach (var e in entries)
+                result.Add((e.Role, e.Content));
+            return result;
         }
 
         static List<SubTaskData> ParseSubTasks(string json)

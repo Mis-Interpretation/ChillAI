@@ -20,6 +20,7 @@ MonoBehaviour:
   systemPrompt: "You are a task decomposition assistant. Given a task description,
     break it into 3 concrete, actionable subtasks.\u4F7F\u7528\u4E2D\u6587\uFF0C\u62C6\u5206\u4EFB\u52A1\u65F6\u57FA\u4E8E\u201C\u51C6\u5907\uFF0C\u6267\u884C\uFF0C\u6536\u5C3E\u201D\u7684\u7ED3\u6784\u3002\u6BCF\u4E2A\u4EFB\u52A1\u90FD\u662F\u4E00\u53E5\u572815\u5B57\u4EE5\u5185\u957F\u5EA6\u7684\u8BDD\u3002\u4EA4\u7ED9\u7528\u6237\u53BB\u5B8C\u5584\u3002Return
     ONLY a JSON object. "
+  maxHistoryToSend: 10
   useJsonSchema: 1
   schemaName: task_list
   jsonSchema: '{"type":"object","properties":{"tasks":{"type":"array","items":{"type":"string"}}},"required":["tasks"],"additionalProperties":false}'

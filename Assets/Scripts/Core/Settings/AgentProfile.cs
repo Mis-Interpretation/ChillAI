@@ -33,6 +33,11 @@ namespace ChillAI.Core.Settings
         [TextArea(5, 20)]
         public string systemPrompt = "You are a helpful assistant.";
 
+        [Header("History")]
+        [Tooltip("Max history entries to send to the API. 0 = send all available history.")]
+        [Range(0, 200)]
+        public int maxHistoryToSend;
+
         [Header("Response Format")]
         [Tooltip("Enable to force the model to return JSON matching the schema below")]
         public bool useJsonSchema;
