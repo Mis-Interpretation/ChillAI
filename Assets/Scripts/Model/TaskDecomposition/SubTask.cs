@@ -15,5 +15,13 @@ namespace ChillAI.Model.TaskDecomposition
             Title = title;
             Order = order;
         }
+
+        public SubTask(string id, string title, int order, bool isCompleted)
+        {
+            Id = id;
+            Title = title;
+            Order = order;
+            IsCompleted = isCompleted;
+        }
     }
 }

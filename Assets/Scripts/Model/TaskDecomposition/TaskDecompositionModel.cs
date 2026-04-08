@@ -1,11 +1,16 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using UnityEngine;
 
 namespace ChillAI.Model.TaskDecomposition
 {
     public class TaskDecompositionModel : ITaskDecompositionWriter
     {
         readonly List<BigEvent> _bigEvents = new();
+
+        static string SavePath => Path.Combine(Application.persistentDataPath, "tasks.json");
 
         public IReadOnlyList<BigEvent> BigEvents => _bigEvents;
 
@@ -79,6 +84,92 @@ namespace ChillAI.Model.TaskDecomposition
         public void Clear()
         {
             _bigEvents.Clear();
+        }
+
+        // ── Persistence ──
+
+        public void Save()
+        {
+            try
+            {
+                var data = new SaveData();
+                foreach (var be in _bigEvents)
+                {
+                    var bed = new BigEventData { id = be.Id, title = be.Title };
+                    foreach (var st in be.SubTasks)
+                        bed.subTasks.Add(new SubTaskPersist
+                        {
+                            id = st.Id,
+                            title = st.Title,
+                            order = st.Order,
+                            isCompleted = st.IsCompleted
+                        });
+                    data.bigEvents.Add(bed);
+                }
+
+                File.WriteAllText(SavePath, JsonUtility.ToJson(data, true));
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[ChillAI] Failed to save tasks: {e.Message}");
+            }
+        }
+
+        public void Load()
+        {
+            try
+            {
+                if (!File.Exists(SavePath)) return;
+
+                var json = File.ReadAllText(SavePath);
+                var data = JsonUtility.FromJson<SaveData>(json);
+                if (data?.bigEvents == null) return;
+
+                _bigEvents.Clear();
+                foreach (var bed in data.bigEvents)
+                {
+                    var be = new BigEvent(bed.id, bed.title);
+                    var subTasks = new List<SubTask>();
+                    if (bed.subTasks != null)
+                    {
+                        foreach (var std in bed.subTasks)
+                            subTasks.Add(new SubTask(std.id, std.title, std.order, std.isCompleted));
+                    }
+                    be.SetSubTasks(subTasks);
+                    _bigEvents.Add(be);
+                }
+
+                Debug.Log($"[ChillAI] Loaded {_bigEvents.Count} task lists.");
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning($"[ChillAI] Failed to load tasks: {e.Message}");
+            }
+        }
+
+        // ── Serializable DTOs ──
+
+        [Serializable]
+        class SaveData
+        {
+            public List<BigEventData> bigEvents = new();
+        }
+
+        [Serializable]
+        class BigEventData
+        {
+            public string id;
+            public string title;
+            public List<SubTaskPersist> subTasks = new();
+        }
+
+        [Serializable]
+        class SubTaskPersist
+        {
+            public string id;
+            public string title;
+            public int order;
+            public bool isCompleted;
         }
     }
 }

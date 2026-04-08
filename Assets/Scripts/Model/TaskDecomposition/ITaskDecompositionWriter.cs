@@ -14,5 +14,7 @@ namespace ChillAI.Model.TaskDecomposition
         void UpdateBigEventTitle(string bigEventId, string newTitle);
         void UpdateSubTaskTitle(string bigEventId, string subTaskId, string newTitle);
         void Clear();
+        void Save();
+        void Load();
     }
 }

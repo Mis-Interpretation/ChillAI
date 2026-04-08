@@ -54,7 +54,7 @@ namespace ChillAI.View.EmojiChat
 
             _toggleBtn.clicked += OnToggle;
             _sendBtn.clicked += OnSubmit;
-            _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown);
+            _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
@@ -65,7 +65,7 @@ namespace ChillAI.View.EmojiChat
         {
             _toggleBtn.clicked -= OnToggle;
             _sendBtn.clicked -= OnSubmit;
-            _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown);
+            _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiResponse);
         }
@@ -87,9 +87,9 @@ namespace ChillAI.View.EmojiChat
 
         void OnInputKeyDown(KeyDownEvent evt)
         {
-            if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+            if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && !evt.shiftKey)
             {
-                evt.StopPropagation();
+                evt.StopImmediatePropagation();
                 OnSubmit();
             }
         }
@@ -103,7 +103,14 @@ namespace ChillAI.View.EmojiChat
             AddBubble(text, true);
 
             _controller.SendMessage(text);
-            _chatInput.value = "";
+            // Defer clear to avoid ArgumentOutOfRangeException from
+            // TextField's internal handler accessing stale cursor indices
+            _chatInput.schedule.Execute(() =>
+            {
+                _chatInput.Blur();
+                _chatInput.value = "";
+                _chatInput.Focus();
+            });
         }
 
         void OnEmojiResponse(EmojiChatResponseSignal signal)

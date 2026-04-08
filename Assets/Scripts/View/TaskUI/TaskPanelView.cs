@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using ChillAI.Controller;
 using ChillAI.Core.Config;
 using ChillAI.Core.Signals;
@@ -23,19 +22,20 @@ namespace ChillAI.View.TaskUI
         VisualElement _panel;
         Button _closeBtn;
         Label _statusLabel;
-        ScrollView _bigEventList;
-        Button _addBtn;
+        ScrollView _listScroll;
+        Button _addListBtn;
+        ScrollView _taskScroll;
 
         bool _panelVisible;
+        string _selectedBigEventId;
 
-        // Track big event elements for partial updates
-        readonly Dictionary<string, VisualElement> _bigEventElements = new();
-
-        // Track expanded state per big event (view-only state)
-        readonly HashSet<string> _expandedBigEvents = new();
-
-        // Inline input reference (only one at a time)
+        // Inline input (shared, only one active at a time)
         VisualElement _inlineInputRow;
+
+        // Double-click tracking for big event titles
+        float _lastListClickTime;
+        string _lastListClickId;
+        const float DoubleClickThreshold = 0.5f;
 
         // Inline edit state
         TextField _activeEditField;
@@ -65,63 +65,37 @@ namespace ChillAI.View.TaskUI
             _panel = root.Q<VisualElement>("panel");
             _closeBtn = root.Q<Button>("close-btn");
             _statusLabel = root.Q<Label>("status-label");
-            _bigEventList = root.Q<ScrollView>("big-event-list");
-            _addBtn = root.Q<Button>("add-btn");
+            _listScroll = root.Q<ScrollView>("list-scroll");
+            _addListBtn = root.Q<Button>("add-list-btn");
+            _taskScroll = root.Q<ScrollView>("task-scroll");
 
             _toggleBtn.clicked += OnToggle;
             _closeBtn.clicked += OnClose;
-            _addBtn.clicked += OnAddClicked;
+            _addListBtn.clicked += OnAddListClicked;
 
-            _signalBus?.Subscribe<TaskDecompositionResultSignal>(OnTaskResult);
+            _panel.RegisterCallback<MouseDownEvent>(OnPanelMouseDown);
+
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
 
-            // Click anywhere on panel to dismiss active edit
-            _panel.RegisterCallback<MouseDownEvent>(OnPanelMouseDown);
-
             UpdateStatus();
-            RebuildEntireList();
+            AutoSelectFirst();
+            RebuildLeftColumn();
+            RebuildRightColumn();
         }
 
         void OnDisable()
         {
             _toggleBtn.clicked -= OnToggle;
             _closeBtn.clicked -= OnClose;
-            _addBtn.clicked -= OnAddClicked;
-
+            _addListBtn.clicked -= OnAddListClicked;
             _panel.UnregisterCallback<MouseDownEvent>(OnPanelMouseDown);
 
-            _signalBus?.TryUnsubscribe<TaskDecompositionResultSignal>(OnTaskResult);
             _signalBus?.TryUnsubscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
         }
 
-        void Update()
-        {
-            foreach (var bigEvent in _taskReader.BigEvents)
-            {
-                if (!_bigEventElements.TryGetValue(bigEvent.Id, out var element)) continue;
-                var loading = element.Q<Label>("loading-" + bigEvent.Id);
-                if (loading != null)
-                    loading.EnableInClassList("hidden", !bigEvent.IsProcessing);
-            }
-        }
-
-        // ── Panel Click → Dismiss Edit ──
-
-        void OnPanelMouseDown(MouseDownEvent evt)
-        {
-            if (_activeEditField == null) return;
-
-            // If click target is inside the active edit field, let it through
-            var target = evt.target as VisualElement;
-            if (target != null && (_activeEditField == target || _activeEditField.Contains(target)))
-                return;
-
-            CommitEditMode();
-        }
-
-        // ── Panel Toggle ──
+        // ── Panel ──
 
         void OnToggle()
         {
@@ -136,274 +110,178 @@ namespace ChillAI.View.TaskUI
             _panel.EnableInClassList("hidden", true);
         }
 
-        // ── Add Big Event ──
+        void OnPanelMouseDown(MouseDownEvent evt)
+        {
+            var target = evt.target as VisualElement;
 
-        void OnAddClicked()
+            // Dismiss active inline edit
+            if (_activeEditField != null)
+            {
+                if (target == null || (!_activeEditField.Equals(target) && !_activeEditField.Contains(target)))
+                    CommitEditMode();
+            }
+
+            // Dismiss active inline input (focus-out handles save)
+        }
+
+        // ── Selection ──
+
+        void AutoSelectFirst()
+        {
+            _selectedBigEventId = _taskReader.BigEvents.Count > 0
+                ? _taskReader.BigEvents[0].Id
+                : null;
+        }
+
+        void SelectBigEvent(string id)
+        {
+            if (_selectedBigEventId == id) return;
+            CommitEditMode();
+            RemoveInlineInput();
+            _selectedBigEventId = id;
+            RebuildLeftColumn();
+            RebuildRightColumn();
+        }
+
+        // ── Left Column (big events) ──
+
+        void OnAddListClicked()
         {
             CommitEditMode();
             if (_inlineInputRow != null) return;
-
-            _inlineInputRow = new VisualElement();
-            _inlineInputRow.AddToClassList("inline-input-row");
-
-            var input = new TextField();
-            input.AddToClassList("inline-input");
-
-            var confirmBtn = new Button { text = "Go" };
-            confirmBtn.AddToClassList("inline-confirm-btn");
-
-            _inlineInputRow.Add(input);
-            _inlineInputRow.Add(confirmBtn);
-
-            _bigEventList.Insert(0, _inlineInputRow);
-            input.Focus();
-
-            confirmBtn.clicked += () => SubmitInlineInput(input);
-            input.RegisterCallback<KeyDownEvent>(evt =>
+            ShowInlineInput(_listScroll, text =>
             {
-                if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
+                var id = _controller.CreateBigEvent(text);
+                if (id != null)
                 {
-                    evt.StopPropagation();
-                    SubmitInlineInput(input);
-                }
-                else if (evt.keyCode == KeyCode.Escape)
-                {
-                    RemoveInlineInput();
+                    _selectedBigEventId = id;
+                    RebuildLeftColumn();
+                    RebuildRightColumn();
                 }
             });
         }
 
-        void SubmitInlineInput(TextField input)
+        void RebuildLeftColumn()
         {
-            var text = input.value?.Trim();
-            RemoveInlineInput();
-            if (string.IsNullOrEmpty(text)) return;
-            _controller.CreateBigEvent(text);
-        }
-
-        void RemoveInlineInput()
-        {
-            if (_inlineInputRow == null) return;
-            _inlineInputRow.RemoveFromHierarchy();
-            _inlineInputRow = null;
-        }
-
-        // ── Inline Editing ──
-
-        void EnterEditMode(Label label, float clickLocalX, string cssVariant, Action<string> onCommit)
-        {
-            // If already editing, commit the previous edit first
-            if (_activeEditField != null)
-                CommitEditMode();
-
-            var parent = label.parent;
-            var index = parent.IndexOf(label);
-            var text = label.text;
-            var fontSize = label.resolvedStyle.fontSize;
-
-            _activeEditOriginalText = text;
-            _activeEditLabel = label;
-            _activeEditCallback = onCommit;
-
-            // Hide label, insert TextField in its place
-            label.style.display = DisplayStyle.None;
-
-            var field = new TextField();
-            field.AddToClassList("edit-field");
-            field.AddToClassList(cssVariant);
-            field.multiline = true;
-            field.value = text;
-            parent.Insert(index + 1, field);
-
-            _activeEditField = field;
-
-            // Focus and set cursor position after layout
-            field.schedule.Execute(() =>
-            {
-                field.Focus();
-                int cursorIdx = EstimateCursorIndex(text, clickLocalX, fontSize);
-                field.SelectRange(cursorIdx, cursorIdx);
-            });
-
-            // Enter → commit, Escape → cancel
-            field.RegisterCallback<KeyDownEvent>(evt =>
-            {
-                if (evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter)
-                {
-                    evt.StopPropagation();
-                    CommitEditMode();
-                }
-                else if (evt.keyCode == KeyCode.Escape)
-                {
-                    evt.StopPropagation();
-                    CancelEditMode();
-                }
-            });
-
-            // FocusOut also commits (covers Tab, etc.)
-            field.RegisterCallback<FocusOutEvent>(_ =>
-            {
-                CommitEditMode();
-            });
-        }
-
-        void CommitEditMode()
-        {
-            if (_activeEditField == null || _isCommittingEdit) return;
-            _isCommittingEdit = true;
-
-            var newText = _activeEditField.value?.Trim();
-            var changed = !string.IsNullOrEmpty(newText) && newText != _activeEditOriginalText;
-
-            // Restore label
-            _activeEditLabel.style.display = DisplayStyle.Flex;
-            if (changed)
-            {
-                _activeEditLabel.text = newText;
-                _activeEditCallback?.Invoke(newText);
-            }
-
-            _activeEditField.RemoveFromHierarchy();
-            _activeEditField = null;
-            _activeEditLabel = null;
-            _activeEditCallback = null;
-            _activeEditOriginalText = null;
-            _isCommittingEdit = false;
-        }
-
-        void CancelEditMode()
-        {
-            if (_activeEditField == null || _isCommittingEdit) return;
-            _isCommittingEdit = true;
-
-            _activeEditLabel.style.display = DisplayStyle.Flex;
-            _activeEditField.RemoveFromHierarchy();
-            _activeEditField = null;
-            _activeEditLabel = null;
-            _activeEditCallback = null;
-            _activeEditOriginalText = null;
-            _isCommittingEdit = false;
-        }
-
-        /// <summary>
-        /// Estimate which character index a click at localX corresponds to,
-        /// accounting for CJK (full-width) vs ASCII (half-width) characters.
-        /// </summary>
-        static int EstimateCursorIndex(string text, float clickX, float fontSize)
-        {
-            if (string.IsNullOrEmpty(text)) return 0;
-
-            float x = 0f;
-            for (int i = 0; i < text.Length; i++)
-            {
-                char c = text[i];
-                float charWidth = c < 128 ? fontSize * 0.55f : fontSize;
-                if (x + charWidth * 0.5f > clickX)
-                    return i;
-                x += charWidth;
-            }
-            return text.Length;
-        }
-
-        // ── Build UI ──
-
-        void RebuildEntireList()
-        {
-            _bigEventList.Clear();
-            _bigEventElements.Clear();
+            _listScroll.Clear();
 
             foreach (var bigEvent in _taskReader.BigEvents)
             {
-                var element = CreateBigEventElement(bigEvent);
-                _bigEventList.Add(element);
-                _bigEventElements[bigEvent.Id] = element;
+                var item = CreateListItem(bigEvent);
+                _listScroll.Add(item);
             }
         }
 
-        VisualElement CreateBigEventElement(BigEvent bigEvent)
+        VisualElement CreateListItem(BigEvent bigEvent)
         {
-            var container = new VisualElement();
-            container.AddToClassList("big-event");
-
-            // Header row
-            var header = new VisualElement();
-            header.AddToClassList("big-event-header");
-
-            var isExpanded = _expandedBigEvents.Contains(bigEvent.Id);
-
-            var arrow = new Button { text = isExpanded ? "▾" : "▸" };
-            arrow.AddToClassList("big-event-arrow");
+            var row = new VisualElement();
+            row.AddToClassList("list-item");
+            if (bigEvent.Id == _selectedBigEventId)
+                row.AddToClassList("list-item--selected");
 
             var title = new Label(bigEvent.Title);
-            title.AddToClassList("big-event-title");
-
-            var progress = new Label(FormatProgress(bigEvent));
-            progress.AddToClassList("big-event-progress");
-            progress.name = "progress-" + bigEvent.Id;
+            title.AddToClassList("list-item-title");
 
             var deleteBtn = new Button { text = "✕" };
-            deleteBtn.AddToClassList("big-event-delete");
+            deleteBtn.AddToClassList("list-item-delete");
 
-            header.Add(arrow);
-            header.Add(title);
-            header.Add(progress);
-            header.Add(deleteBtn);
-            container.Add(header);
+            row.Add(title);
+            row.Add(deleteBtn);
 
-            // Content (subtasks)
-            var content = new VisualElement();
-            content.AddToClassList("big-event-content");
-            content.name = "content-" + bigEvent.Id;
-            content.EnableInClassList("hidden", !isExpanded);
-
-            BuildBigEventContent(content, bigEvent);
-            container.Add(content);
-
-            // Events
             var bigEventId = bigEvent.Id;
 
-            arrow.clicked += () => ToggleExpand(bigEventId, arrow, content);
+            // Click row → select
+            row.RegisterCallback<ClickEvent>(evt =>
+            {
+                var t = evt.target as VisualElement;
+                if (t == deleteBtn || deleteBtn.Contains(t)) return;
+                if (_activeEditField != null) return;
+                SelectBigEvent(bigEventId);
+            });
+
+            // Double-click title → inline edit (manual 0.5s window)
+            title.RegisterCallback<MouseDownEvent>(evt =>
+            {
+                if (evt.button != 0) return;
+                float now = Time.realtimeSinceStartup;
+                if (_lastListClickId == bigEventId && now - _lastListClickTime < DoubleClickThreshold)
+                {
+                    _lastListClickId = null;
+                    evt.StopPropagation();
+                    EnterEditMode(title, evt.localMousePosition.x, "edit-field--big", newText =>
+                    {
+                        _controller.UpdateBigEventTitle(bigEventId, newText);
+                    });
+                }
+                else
+                {
+                    _lastListClickId = bigEventId;
+                    _lastListClickTime = now;
+                }
+            });
 
             deleteBtn.clicked += () => _controller.DeleteBigEvent(bigEventId);
 
-            // Click title → edit
-            title.RegisterCallback<MouseDownEvent>(evt =>
-            {
-                evt.StopPropagation();
-                EnterEditMode(title, evt.localMousePosition.x, "edit-field--big", newText =>
-                {
-                    _controller.UpdateBigEventTitle(bigEventId, newText);
-                });
-            });
-
-            return container;
+            return row;
         }
 
-        void BuildBigEventContent(VisualElement content, BigEvent bigEvent)
+        // ── Right Column (subtasks) ──
+
+        void RebuildRightColumn()
         {
-            content.Clear();
+            _taskScroll.Clear();
+
+            var selected = _selectedBigEventId != null
+                ? _taskReader.GetBigEvent(_selectedBigEventId)
+                : null;
+
+            if (selected == null) return;
 
             // Loading
-            var loading = new Label("思考中...");
-            loading.AddToClassList("big-event-loading");
-            loading.name = "loading-" + bigEvent.Id;
-            loading.EnableInClassList("hidden", !bigEvent.IsProcessing);
-            content.Add(loading);
+            if (selected.IsProcessing)
+            {
+                var loading = new Label("思考中...");
+                loading.style.color = new Color(0.59f, 0.78f, 1f, 0.8f);
+                loading.style.fontSize = 11;
+                loading.style.unityFontStyleAndWeight = FontStyle.Italic;
+                loading.style.paddingLeft = 6;
+                loading.style.paddingTop = 4;
+                _taskScroll.Add(loading);
+            }
 
             // Error
-            if (!string.IsNullOrEmpty(bigEvent.ErrorMessage))
+            if (!string.IsNullOrEmpty(selected.ErrorMessage))
             {
-                var error = new Label(bigEvent.ErrorMessage);
-                error.AddToClassList("big-event-error");
-                content.Add(error);
+                var error = new Label(selected.ErrorMessage);
+                error.style.color = new Color(1f, 0.39f, 0.31f, 0.9f);
+                error.style.fontSize = 11;
+                error.style.whiteSpace = WhiteSpace.Normal;
+                error.style.paddingLeft = 6;
+                _taskScroll.Add(error);
             }
 
             // Subtasks
-            foreach (var subTask in bigEvent.SubTasks)
+            foreach (var subTask in selected.SubTasks)
             {
-                var item = CreateSubTaskElement(bigEvent.Id, subTask);
-                content.Add(item);
+                var item = CreateSubTaskElement(selected.Id, subTask);
+                _taskScroll.Add(item);
             }
+
+            // "＋ 新任务" button right after last task
+            var addTaskBtn = new Button { text = "＋ 新任务" };
+            addTaskBtn.AddToClassList("add-task-btn");
+            var capturedId = selected.Id;
+            addTaskBtn.clicked += () =>
+            {
+                CommitEditMode();
+                if (_inlineInputRow != null) return;
+                // Insert inline input just before the add-task button
+                ShowInlineInputBefore(addTaskBtn, text =>
+                {
+                    _controller.AddSubTask(capturedId, text);
+                });
+            };
+            _taskScroll.Add(addTaskBtn);
         }
 
         VisualElement CreateSubTaskElement(string bigEventId, SubTask subTask)
@@ -436,9 +314,10 @@ namespace ChillAI.View.TaskUI
 
             deleteBtn.clicked += () => _controller.DeleteSubTask(bigEventId, subTaskId);
 
-            // Click label → edit
+            // Click label → inline edit
             label.RegisterCallback<MouseDownEvent>(evt =>
             {
+                if (evt.button != 0) return;
                 evt.StopPropagation();
                 EnterEditMode(label, evt.localMousePosition.x, "edit-field--sub", newText =>
                 {
@@ -449,125 +328,215 @@ namespace ChillAI.View.TaskUI
             return row;
         }
 
-        void ToggleExpand(string bigEventId, Button arrow, VisualElement content)
+        // ── Inline Input ──
+
+        void ShowInlineInput(ScrollView parent, Action<string> onSubmit)
         {
-            if (_expandedBigEvents.Contains(bigEventId))
+            CreateInlineInput(onSubmit);
+            parent.Add(_inlineInputRow);
+            _inlineInputRow.Q<TextField>().Focus();
+        }
+
+        void ShowInlineInputBefore(VisualElement sibling, Action<string> onSubmit)
+        {
+            CreateInlineInput(onSubmit);
+            var parent = sibling.parent;
+            var idx = parent.IndexOf(sibling);
+            parent.Insert(idx, _inlineInputRow);
+            _inlineInputRow.Q<TextField>().Focus();
+        }
+
+        void CreateInlineInput(Action<string> onSubmit)
+        {
+            _inlineInputRow = new VisualElement();
+            _inlineInputRow.AddToClassList("inline-input-row");
+
+            var input = new TextField();
+            input.AddToClassList("inline-input");
+            input.multiline = true;
+
+            _inlineInputRow.Add(input);
+
+            input.RegisterCallback<KeyDownEvent>(evt =>
             {
-                _expandedBigEvents.Remove(bigEventId);
-                arrow.text = "▸";
-                content.EnableInClassList("hidden", true);
-            }
-            else
+                if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && !evt.shiftKey)
+                {
+                    evt.StopImmediatePropagation();
+                    SubmitInlineInput(input, onSubmit);
+                }
+                else if (evt.keyCode == KeyCode.Escape)
+                {
+                    evt.StopImmediatePropagation();
+                    RemoveInlineInput();
+                }
+            }, TrickleDown.TrickleDown);
+
+            // Click elsewhere → save (same pattern as inline edit)
+            input.RegisterCallback<FocusOutEvent>(_ =>
             {
-                _expandedBigEvents.Add(bigEventId);
-                arrow.text = "▾";
-                content.EnableInClassList("hidden", false);
+                SubmitInlineInput(input, onSubmit);
+            });
+        }
+
+        void SubmitInlineInput(TextField input, Action<string> onSubmit)
+        {
+            if (_inlineInputRow == null) return; // already submitted
+            var text = input.value?.Trim();
+            RemoveInlineInput();
+            if (!string.IsNullOrEmpty(text))
+                onSubmit(text);
+        }
+
+        void RemoveInlineInput()
+        {
+            if (_inlineInputRow == null) return;
+            _inlineInputRow.RemoveFromHierarchy();
+            _inlineInputRow = null;
+        }
+
+        // ── Inline Editing ──
+
+        void EnterEditMode(Label label, float clickLocalX, string cssVariant, Action<string> onCommit)
+        {
+            if (_activeEditField != null)
+                CommitEditMode();
+
+            var parent = label.parent;
+            var index = parent.IndexOf(label);
+            var text = label.text;
+            var fontSize = label.resolvedStyle.fontSize;
+
+            _activeEditOriginalText = text;
+            _activeEditLabel = label;
+            _activeEditCallback = onCommit;
+
+            label.style.display = DisplayStyle.None;
+
+            var field = new TextField();
+            field.AddToClassList("edit-field");
+            field.AddToClassList(cssVariant);
+            field.multiline = true;
+            field.value = text;
+            parent.Insert(index + 1, field);
+
+            _activeEditField = field;
+
+            field.schedule.Execute(() =>
+            {
+                field.Focus();
+                int cursorIdx = EstimateCursorIndex(text, clickLocalX, fontSize);
+                field.SelectRange(cursorIdx, cursorIdx);
+            });
+
+            field.RegisterCallback<KeyDownEvent>(evt =>
+            {
+                if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && !evt.shiftKey)
+                {
+                    evt.StopImmediatePropagation();
+                    CommitEditMode();
+                }
+                else if (evt.keyCode == KeyCode.Escape)
+                {
+                    evt.StopImmediatePropagation();
+                    CancelEditMode();
+                }
+            }, TrickleDown.TrickleDown);
+
+            field.RegisterCallback<FocusOutEvent>(_ => CommitEditMode());
+        }
+
+        void CommitEditMode()
+        {
+            if (_activeEditField == null || _isCommittingEdit) return;
+            _isCommittingEdit = true;
+
+            var newText = _activeEditField.value?.Trim();
+            var changed = !string.IsNullOrEmpty(newText) && newText != _activeEditOriginalText;
+
+            _activeEditLabel.style.display = DisplayStyle.Flex;
+            if (changed)
+            {
+                _activeEditLabel.text = newText;
+                _activeEditCallback?.Invoke(newText);
             }
+
+            _activeEditField.RemoveFromHierarchy();
+            _activeEditField = null;
+            _activeEditLabel = null;
+            _activeEditCallback = null;
+            _activeEditOriginalText = null;
+            _isCommittingEdit = false;
+        }
+
+        void CancelEditMode()
+        {
+            if (_activeEditField == null || _isCommittingEdit) return;
+            _isCommittingEdit = true;
+
+            _activeEditLabel.style.display = DisplayStyle.Flex;
+            _activeEditField.RemoveFromHierarchy();
+            _activeEditField = null;
+            _activeEditLabel = null;
+            _activeEditCallback = null;
+            _activeEditOriginalText = null;
+            _isCommittingEdit = false;
+        }
+
+        static int EstimateCursorIndex(string text, float clickX, float fontSize)
+        {
+            if (string.IsNullOrEmpty(text)) return 0;
+            float x = 0f;
+            for (int i = 0; i < text.Length; i++)
+            {
+                float charWidth = text[i] < 128 ? fontSize * 0.55f : fontSize;
+                if (x + charWidth * 0.5f > clickX)
+                    return i;
+                x += charWidth;
+            }
+            return text.Length;
         }
 
         // ── Signal Handlers ──
-
-        void OnTaskResult(TaskDecompositionResultSignal signal)
-        {
-            if (!_bigEventElements.TryGetValue(signal.BigEventId, out var element)) return;
-
-            var bigEvent = _taskReader.GetBigEvent(signal.BigEventId);
-            if (bigEvent == null) return;
-
-            var content = element.Q<VisualElement>("content-" + signal.BigEventId);
-            if (content != null)
-                BuildBigEventContent(content, bigEvent);
-
-            UpdateProgress(signal.BigEventId);
-
-            // Auto-expand when results arrive
-            if (!_expandedBigEvents.Contains(signal.BigEventId))
-            {
-                _expandedBigEvents.Add(signal.BigEventId);
-                var arrow = element.Q<Button>(className: "big-event-arrow");
-                if (arrow != null) arrow.text = "▾";
-                if (content != null) content.EnableInClassList("hidden", false);
-            }
-        }
 
         void OnBigEventChanged(BigEventChangedSignal signal)
         {
             switch (signal.ChangeType)
             {
                 case BigEventChangeType.Added:
-                {
-                    var bigEvent = _taskReader.GetBigEvent(signal.BigEventId);
-                    if (bigEvent == null) return;
-                    _expandedBigEvents.Add(bigEvent.Id);
-                    var element = CreateBigEventElement(bigEvent);
-                    _bigEventList.Add(element);
-                    _bigEventElements[bigEvent.Id] = element;
+                    RebuildLeftColumn();
                     break;
-                }
 
                 case BigEventChangeType.Removed:
-                {
-                    if (_bigEventElements.TryGetValue(signal.BigEventId, out var element))
-                    {
-                        element.RemoveFromHierarchy();
-                        _bigEventElements.Remove(signal.BigEventId);
-                        _expandedBigEvents.Remove(signal.BigEventId);
-                    }
+                    if (signal.BigEventId == _selectedBigEventId)
+                        AutoSelectFirst();
+                    RebuildLeftColumn();
+                    RebuildRightColumn();
                     break;
-                }
 
+                case BigEventChangeType.SubTaskAdded:
                 case BigEventChangeType.SubTaskRemoved:
-                {
-                    var bigEvent = _taskReader.GetBigEvent(signal.BigEventId);
-                    if (bigEvent == null) return;
-                    if (!_bigEventElements.TryGetValue(signal.BigEventId, out var element)) return;
-                    var content = element.Q<VisualElement>("content-" + signal.BigEventId);
-                    if (content != null)
-                        BuildBigEventContent(content, bigEvent);
-                    UpdateProgress(signal.BigEventId);
+                    if (signal.BigEventId == _selectedBigEventId)
+                        RebuildRightColumn();
                     break;
-                }
             }
         }
 
         void OnSubTaskCompletionChanged(SubTaskCompletionChangedSignal signal)
         {
-            if (!_bigEventElements.TryGetValue(signal.BigEventId, out var element)) return;
+            if (signal.BigEventId != _selectedBigEventId) return;
 
-            var subtaskRow = element.Q<VisualElement>("subtask-" + signal.SubTaskId);
+            var subtaskRow = _taskScroll.Q<VisualElement>("subtask-" + signal.SubTaskId);
             if (subtaskRow != null)
             {
                 var checkbox = subtaskRow.Q<Toggle>();
-                if (checkbox != null)
-                    checkbox.SetValueWithoutNotify(signal.IsCompleted);
+                checkbox?.SetValueWithoutNotify(signal.IsCompleted);
 
                 var label = subtaskRow.Q<Label>(className: "sub-task-title");
-                if (label != null)
-                    label.EnableInClassList("sub-task-title--completed", signal.IsCompleted);
+                label?.EnableInClassList("sub-task-title--completed", signal.IsCompleted);
             }
-
-            UpdateProgress(signal.BigEventId);
         }
 
         // ── Helpers ──
-
-        void UpdateProgress(string bigEventId)
-        {
-            if (!_bigEventElements.TryGetValue(bigEventId, out var element)) return;
-            var bigEvent = _taskReader.GetBigEvent(bigEventId);
-            if (bigEvent == null) return;
-
-            var progressLabel = element.Q<Label>("progress-" + bigEventId);
-            if (progressLabel != null)
-                progressLabel.text = FormatProgress(bigEvent);
-        }
-
-        static string FormatProgress(BigEvent bigEvent)
-        {
-            return bigEvent.TotalCount > 0
-                ? $"{bigEvent.CompletedCount}/{bigEvent.TotalCount}"
-                : "";
-        }
 
         void UpdateStatus()
         {

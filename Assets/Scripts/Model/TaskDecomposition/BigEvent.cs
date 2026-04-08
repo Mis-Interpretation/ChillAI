@@ -23,6 +23,12 @@ namespace ChillAI.Model.TaskDecomposition
             Title = title;
         }
 
+        public BigEvent(string id, string title)
+        {
+            Id = id;
+            Title = title;
+        }
+
         public void SetSubTasks(List<SubTask> subTasks)
         {
             _subTasks.Clear();

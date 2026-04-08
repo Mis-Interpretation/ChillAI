@@ -18,7 +18,7 @@
 
         <!-- Input Row -->
         <ui:VisualElement class="chat-input-row">
-            <ui:TextField name="chat-input" class="chat-input" />
+            <ui:TextField name="chat-input" class="chat-input" multiline="true" />
             <ui:Button name="chat-send-btn" class="chat-send-btn" text="Send" />
         </ui:VisualElement>
     </ui:VisualElement>

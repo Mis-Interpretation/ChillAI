@@ -149,6 +149,7 @@
     color: #e0e0e0;
     padding: 4px 8px;
     min-height: 36px;
+    white-space: normal;
 }
 
 .chat-input > .unity-text-field__input > .unity-text-element {

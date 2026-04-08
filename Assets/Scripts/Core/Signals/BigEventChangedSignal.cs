@@ -4,6 +4,7 @@ namespace ChillAI.Core.Signals
     {
         Added,
         Removed,
+        SubTaskAdded,
         SubTaskRemoved
     }
 

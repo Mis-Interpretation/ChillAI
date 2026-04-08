@@ -27,19 +27,33 @@ namespace ChillAI.Controller
             _taskModel = taskModel;
             _agentRegistry = agentRegistry;
             _signalBus = signalBus;
+
+            _taskModel.Load();
         }
 
         public bool IsAIConfigured => _aiService.IsConfigured;
 
         AgentProfile TaskProfile => _agentRegistry.GetProfile(AgentRegistry.Ids.TaskDecomposition);
 
-        public void CreateBigEvent(string title)
+        public string CreateBigEvent(string title)
         {
-            if (string.IsNullOrWhiteSpace(title)) return;
+            if (string.IsNullOrWhiteSpace(title)) return null;
 
             var bigEvent = _taskModel.AddBigEvent(title);
             _signalBus.Fire(new BigEventChangedSignal(bigEvent.Id, BigEventChangeType.Added));
-            RequestDecomposition(bigEvent.Id);
+            _taskModel.Save();
+            return bigEvent.Id;
+        }
+
+        public void AddSubTask(string bigEventId, string title)
+        {
+            if (string.IsNullOrWhiteSpace(title)) return;
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null) return;
+            var subTask = new SubTask(title, bigEvent.TotalCount + 1);
+            bigEvent.AddSubTask(subTask);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskAdded));
+            _taskModel.Save();
         }
 
         public async void RequestDecomposition(string bigEventId)
@@ -83,6 +97,7 @@ namespace ChillAI.Controller
                     bigEventId, bigEvent.Title, (IReadOnlyList<SubTaskData>)subTaskDatas));
 
                 Debug.Log($"[ChillAI] Big event '{bigEvent.Title}' decomposed into {subTasks.Count} subtasks.");
+                _taskModel.Save();
             }
             catch (AIServiceException e)
             {
@@ -106,30 +121,35 @@ namespace ChillAI.Controller
             var subTask = bigEvent?.SubTasks.FirstOrDefault(s => s.Id == subTaskId);
             if (subTask != null)
                 _signalBus.Fire(new SubTaskCompletionChangedSignal(bigEventId, subTaskId, subTask.IsCompleted));
+            _taskModel.Save();
         }
 
         public void DeleteSubTask(string bigEventId, string subTaskId)
         {
             _taskModel.RemoveSubTask(bigEventId, subTaskId);
             _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskRemoved));
+            _taskModel.Save();
         }
 
         public void UpdateBigEventTitle(string bigEventId, string newTitle)
         {
             if (string.IsNullOrWhiteSpace(newTitle)) return;
             _taskModel.UpdateBigEventTitle(bigEventId, newTitle);
+            _taskModel.Save();
         }
 
         public void UpdateSubTaskTitle(string bigEventId, string subTaskId, string newTitle)
         {
             if (string.IsNullOrWhiteSpace(newTitle)) return;
             _taskModel.UpdateSubTaskTitle(bigEventId, subTaskId, newTitle);
+            _taskModel.Save();
         }
 
         public void DeleteBigEvent(string bigEventId)
         {
             _taskModel.RemoveBigEvent(bigEventId);
             _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
+            _taskModel.Save();
         }
 
         static List<SubTaskData> ParseSubTasks(string json)

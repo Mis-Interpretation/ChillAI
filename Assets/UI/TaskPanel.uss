@@ -28,36 +28,36 @@
     position: absolute;
     bottom: 84px;
     right: 12px;
-    width: 340px;
-    max-height: 520px;
+    width: 460px;
+    height: 420px;
     background-color: rgba(20, 20, 25, 0.92);
     border-radius: 12px;
     border-width: 1px;
     border-color: rgba(255, 255, 255, 0.08);
-    padding: 12px;
+    padding: 10px;
 }
 
-/* ── Panel Header ── */
+/* ── Header ── */
 .panel-header {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
 
 .panel-title {
     color: #e0e0e0;
-    font-size: 15px;
+    font-size: 16px;
     -unity-font-style: bold;
 }
 
 .close-btn {
-    width: 24px;
-    height: 24px;
-    border-radius: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
     background-color: transparent;
-    color: rgba(255, 255, 255, 0.45);
-    font-size: 13px;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
     border-width: 0;
     -unity-text-align: middle-center;
 }
@@ -70,110 +70,132 @@
 /* ── Status ── */
 .status-label {
     color: rgba(255, 180, 80, 0.9);
-    font-size: 11px;
+    font-size: 12px;
     margin-bottom: 4px;
     white-space: normal;
 }
 
-/* ── Big Event List ── */
-.big-event-list {
+/* ── Two-column layout ── */
+.columns {
+    flex-direction: row;
     flex-grow: 1;
-    max-height: 400px;
 }
 
-/* ── Big Event Card ── */
-.big-event {
-    background-color: rgba(255, 255, 255, 0.03);
-    border-radius: 8px;
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.06);
-    margin-bottom: 6px;
+/* ── Left column (big events) ── */
+.col-left {
+    width: 130px;
+    flex-shrink: 0;
+    flex-direction: column;
 }
 
-.big-event-header {
+.list-scroll {
+    flex-grow: 1;
+}
+
+/* Left column item */
+.list-item {
+    padding: 6px 8px;
+    border-radius: 5px;
+    margin-bottom: 2px;
     flex-direction: row;
     align-items: center;
-    padding: 8px;
 }
 
-.big-event-arrow {
-    width: 20px;
-    height: 20px;
-    font-size: 10px;
-    color: rgba(255, 255, 255, 0.45);
-    -unity-text-align: middle-center;
-    background-color: transparent;
-    border-width: 0;
-    padding: 0;
-    margin-right: 4px;
+.list-item:hover {
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
-.big-event-arrow:hover {
-    color: rgba(255, 255, 255, 0.8);
+.list-item--selected {
+    background-color: rgba(80, 140, 255, 0.15);
 }
 
-.big-event-title {
+.list-item--selected:hover {
+    background-color: rgba(80, 140, 255, 0.2);
+}
+
+.list-item-title {
     flex-grow: 1;
     flex-shrink: 1;
-    color: #e0e0e0;
+    color: rgba(210, 210, 210, 0.85);
     font-size: 13px;
-    -unity-font-style: bold;
     white-space: normal;
+    overflow: hidden;
 }
 
-.big-event-progress {
-    color: rgba(150, 200, 255, 0.8);
-    font-size: 11px;
+.list-item--selected .list-item-title {
+    color: #e0e0e0;
+    -unity-font-style: bold;
+}
+
+.list-item-delete {
+    width: 16px;
+    height: 16px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.0);
+    font-size: 10px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+    padding: 0;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.list-item:hover .list-item-delete {
+    color: rgba(255, 255, 255, 0.2);
+}
+
+.list-item-delete:hover {
+    color: rgba(255, 100, 100, 0.9);
+}
+
+/* Add list button (pinned at bottom of left col) */
+.add-list-btn {
+    margin-top: 4px;
+    height: 28px;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 16px;
+    border-width: 0;
+    flex-shrink: 0;
+}
+
+.add-list-btn:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Divider ── */
+.col-divider {
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.06);
     margin-left: 6px;
     margin-right: 6px;
     flex-shrink: 0;
 }
 
-.big-event-delete {
-    width: 20px;
-    height: 20px;
-    border-radius: 10px;
-    background-color: transparent;
-    color: rgba(255, 255, 255, 0.25);
-    font-size: 11px;
-    border-width: 0;
-    -unity-text-align: middle-center;
-    padding: 0;
-    flex-shrink: 0;
+/* ── Right column (subtasks) ── */
+.col-right {
+    flex-grow: 1;
+    flex-direction: column;
+    min-width: 0;
 }
 
-.big-event-delete:hover {
-    color: rgba(255, 100, 100, 0.9);
-    background-color: rgba(255, 100, 100, 0.1);
-}
-
-/* ── Big Event Content (subtask area) ── */
-.big-event-content {
-    padding-left: 12px;
-    padding-right: 8px;
-    padding-bottom: 8px;
-}
-
-.big-event-loading {
-    color: rgba(150, 200, 255, 0.8);
-    font-size: 11px;
-    -unity-font-style: italic;
-    padding: 4px 0;
-}
-
-.big-event-error {
-    color: rgba(255, 100, 80, 0.9);
-    font-size: 11px;
-    white-space: normal;
-    padding: 4px 0;
+.task-scroll {
+    flex-grow: 1;
 }
 
 /* ── Subtask Item ── */
 .sub-task-item {
     flex-direction: row;
     align-items: flex-start;
-    padding: 3px 0;
+    padding: 5px 6px;
     margin-bottom: 2px;
+    border-radius: 5px;
+}
+
+.sub-task-item:hover {
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 .sub-task-checkbox {
@@ -186,9 +208,9 @@
 .sub-task-checkbox > .unity-toggle__input > .unity-toggle__checkmark {
     background-color: rgba(40, 40, 50, 0.95);
     border-color: rgba(255, 255, 255, 0.2);
-    border-radius: 3px;
-    width: 16px;
-    height: 16px;
+    border-radius: 9px;
+    width: 18px;
+    height: 18px;
     border-width: 1px;
 }
 
@@ -201,7 +223,7 @@
     flex-grow: 1;
     flex-shrink: 1;
     color: #d0d0d0;
-    font-size: 12px;
+    font-size: 14px;
     white-space: normal;
     margin-left: 6px;
     margin-right: 4px;
@@ -215,9 +237,9 @@
 .sub-task-delete {
     width: 18px;
     height: 18px;
-    font-size: 9px;
+    font-size: 10px;
     background-color: transparent;
-    color: rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.0);
     border-width: 0;
     -unity-text-align: middle-center;
     padding: 0;
@@ -225,74 +247,29 @@
     margin-top: 1px;
 }
 
+.sub-task-item:hover .sub-task-delete {
+    color: rgba(255, 255, 255, 0.2);
+}
+
 .sub-task-delete:hover {
     color: rgba(255, 100, 100, 0.8);
 }
 
-/* ── Add Button ── */
-.add-btn {
-    background-color: rgba(80, 140, 255, 0.2);
-    color: rgba(255, 255, 255, 0.7);
-    border-radius: 6px;
-    min-height: 32px;
-    margin-top: 8px;
-    border-width: 1px;
-    border-color: rgba(80, 140, 255, 0.25);
-    font-size: 12px;
-}
-
-.add-btn:hover {
-    background-color: rgba(80, 140, 255, 0.35);
-    color: rgba(255, 255, 255, 0.9);
-}
-
-/* ── Inline Input (for new big event) ── */
-.inline-input-row {
-    flex-direction: row;
-    margin-bottom: 6px;
-    padding: 4px;
-    background-color: rgba(255, 255, 255, 0.03);
-    border-radius: 6px;
-}
-
-.inline-input {
-    flex-grow: 1;
-    min-height: 30px;
-    margin-right: 4px;
+/* Add task button (inside task scroll, after last task) */
+.add-task-btn {
+    margin-top: 2px;
+    padding: 4px 6px;
+    border-radius: 5px;
     background-color: transparent;
-    border-radius: 4px;
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 13px;
     border-width: 0;
-    color: #e0e0e0;
-    font-size: 12px;
+    -unity-text-align: middle-left;
 }
 
-.inline-input > .unity-text-field__input {
-    background-color: rgba(40, 40, 50, 0.95);
-    border-radius: 4px;
-    border-width: 1px;
-    border-color: rgba(255, 255, 255, 0.1);
-    color: #e0e0e0;
-    padding: 4px 8px;
-    min-height: 30px;
-}
-
-.inline-input:focus > .unity-text-field__input {
-    border-color: rgba(100, 160, 255, 0.5);
-}
-
-.inline-confirm-btn {
-    width: 36px;
-    min-height: 30px;
-    border-radius: 4px;
-    background-color: rgba(80, 140, 255, 0.6);
-    color: #ffffff;
-    font-size: 12px;
-    -unity-font-style: bold;
-    border-width: 0;
-}
-
-.inline-confirm-btn:hover {
-    background-color: rgba(100, 160, 255, 0.8);
+.add-task-btn:hover {
+    color: rgba(150, 200, 255, 0.8);
+    background-color: rgba(255, 255, 255, 0.03);
 }
 
 /* ── Inline Edit Field ── */
@@ -317,18 +294,16 @@
 
 .edit-field--big {
     font-size: 13px;
-    -unity-font-style: bold;
-    color: #e0e0e0;
+    color: #d8d8d8;
 }
 
 .edit-field--big > .unity-text-field__input {
-    color: #e0e0e0;
+    color: #d8d8d8;
     font-size: 13px;
-    -unity-font-style: bold;
 }
 
 .edit-field--sub {
-    font-size: 12px;
+    font-size: 14px;
     color: #d0d0d0;
     margin-left: 6px;
     margin-right: 4px;
@@ -336,25 +311,58 @@
 
 .edit-field--sub > .unity-text-field__input {
     color: #d0d0d0;
-    font-size: 12px;
+    font-size: 14px;
 }
 
-/* ── Scrollbar ── */
-.big-event-list .unity-scroller--vertical {
-    width: 4px;
+/* ── Inline Input (for new items) ── */
+.inline-input-row {
+    flex-direction: row;
+    margin-bottom: 2px;
+    padding: 3px;
+    border-radius: 5px;
 }
 
-.big-event-list .unity-scroller--vertical .unity-base-slider__tracker {
+.inline-input {
+    flex-grow: 1;
+    min-height: 26px;
+    background-color: transparent;
+    border-radius: 3px;
+    border-width: 0;
+    color: #e0e0e0;
+    font-size: 13px;
+}
+
+.inline-input > .unity-text-field__input {
+    background-color: rgba(40, 40, 50, 0.95);
+    border-radius: 3px;
+    border-width: 1px;
+    border-color: rgba(100, 160, 255, 0.5);
+    color: #e0e0e0;
+    padding: 3px 6px;
+    min-height: 26px;
+    white-space: normal;
+}
+
+/* ── Scrollbar (both columns) ── */
+.list-scroll .unity-scroller--vertical,
+.task-scroll .unity-scroller--vertical {
+    width: 3px;
+}
+
+.list-scroll .unity-scroller--vertical .unity-base-slider__tracker,
+.task-scroll .unity-scroller--vertical .unity-base-slider__tracker {
     background-color: transparent;
     border-width: 0;
 }
 
-.big-event-list .unity-scroller--vertical .unity-base-slider__dragger {
-    background-color: rgba(255, 255, 255, 0.12);
+.list-scroll .unity-scroller--vertical .unity-base-slider__dragger,
+.task-scroll .unity-scroller--vertical .unity-base-slider__dragger {
+    background-color: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     border-width: 0;
 }
 
-.big-event-list .unity-scroller--vertical .unity-repeat-button {
+.list-scroll .unity-scroller--vertical .unity-repeat-button,
+.task-scroll .unity-scroller--vertical .unity-repeat-button {
     display: none;
 }
