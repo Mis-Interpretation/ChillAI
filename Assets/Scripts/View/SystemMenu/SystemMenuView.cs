@@ -1,5 +1,9 @@
+using System.Collections.Generic;
 using ChillAI.Core.Settings;
 using ChillAI.Service.Platform;
+using ChillAI.View.EmojiChat;
+using ChillAI.View.HUD;
+using ChillAI.View.TaskUI;
 using ChillAI.View.Window;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -35,7 +39,14 @@ namespace ChillAI.View.SystemMenu
             var root = GetComponent<UIDocument>().rootVisualElement;
 
             // Wrap all root children so dragging the menu button moves everything together.
+            // Without filling the root, the wrapper gets no layout size (NaN); absolutely
+            // positioned children then have no valid containing block and disappear at runtime.
             _wrapper = new VisualElement { pickingMode = PickingMode.Ignore };
+            _wrapper.style.position = Position.Absolute;
+            _wrapper.style.left = 0;
+            _wrapper.style.right = 0;
+            _wrapper.style.top = 0;
+            _wrapper.style.bottom = 0;
             while (root.childCount > 0)
                 _wrapper.Add(root[0]);
             root.Add(_wrapper);
@@ -44,8 +55,15 @@ namespace ChillAI.View.SystemMenu
             _menuPopup = root.Q<VisualElement>("menu-popup");
             _settingsPanel = root.Q<VisualElement>("settings-panel");
 
+            // Move Chat + Task HUD roots with the system menu (same delta as menu wrapper).
+            var companions = CollectHudCompanionRoots();
+
             // Menu button: hold to drag entire menu, click to toggle menu
-            _dragManipulator = new WindowDragManipulator(_wrapper, dragThreshold: 5f);
+            _dragManipulator = new WindowDragManipulator(
+                _wrapper,
+                dragThreshold: 5f,
+                alsoMove: companions.ToArray(),
+                uguiAlsoMove: CollectUguiHudCompanionRects());
             _dragManipulator.OnClicked += ToggleMenu;
             _menuBtn.AddManipulator(_dragManipulator);
 
@@ -79,6 +97,34 @@ namespace ChillAI.View.SystemMenu
 
             // Click outside menu to close
             root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
+        }
+
+        static List<VisualElement> CollectHudCompanionRoots()
+        {
+            var list = new List<VisualElement>();
+            var chats = Object.FindObjectsByType<EmojiChatPanelView>(FindObjectsSortMode.None);
+            if (chats.Length > 0)
+            {
+                var r = chats[0].GetComponent<UIDocument>()?.rootVisualElement;
+                if (r != null) list.Add(r);
+            }
+
+            var tasks = Object.FindObjectsByType<TaskPanelView>(FindObjectsSortMode.None);
+            if (tasks.Length > 0)
+            {
+                var r = tasks[0].GetComponent<UIDocument>()?.rootVisualElement;
+                if (r != null) list.Add(r);
+            }
+
+            return list;
+        }
+
+        static RectTransform[] CollectUguiHudCompanionRects()
+        {
+            var huds = Object.FindObjectsByType<ActiveProcessHUDView>(FindObjectsSortMode.None);
+            if (huds.Length == 0) return null;
+            var rt = huds[0].MenuDragCompanionRect;
+            return rt != null ? new[] { rt } : null;
         }
 
         void OnDisable()
