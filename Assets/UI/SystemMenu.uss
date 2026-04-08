@@ -1,0 +1,156 @@
+/* ── Utility ── */
+.hidden {
+    display: none;
+}
+
+/* ── Menu Button ── */
+.menu-btn {
+    position: absolute;
+    bottom: 24px;
+    right: 12px;
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background-color: rgba(30, 30, 30, 0.85);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.15);
+    -unity-text-align: middle-center;
+}
+
+.menu-btn:hover {
+    background-color: rgba(60, 60, 60, 0.9);
+    color: #ffffff;
+}
+
+/* ── Popup Menu ── */
+.menu-popup {
+    position: absolute;
+    bottom: 72px;
+    right: 12px;
+    width: 120px;
+    background-color: rgba(25, 25, 30, 0.95);
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.1);
+    padding: 4px;
+}
+
+.menu-item {
+    height: 32px;
+    background-color: transparent;
+    color: #e0e0e0;
+    font-size: 13px;
+    border-width: 0;
+    border-radius: 4px;
+    -unity-text-align: middle-left;
+    padding-left: 8px;
+}
+
+.menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.menu-item--danger:hover {
+    background-color: rgba(255, 80, 80, 0.2);
+    color: rgba(255, 120, 120, 1);
+}
+
+/* ── Settings Panel ── */
+.settings-panel {
+    position: absolute;
+    bottom: 72px;
+    right: 12px;
+    width: 280px;
+    background-color: rgba(20, 20, 25, 0.92);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+}
+
+/* ── Settings Header ── */
+.settings-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.settings-title {
+    color: #e0e0e0;
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.close-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.close-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Setting Row ── */
+.setting-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+    height: 28px;
+}
+
+.setting-label {
+    width: 70px;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 12px;
+    flex-shrink: 0;
+}
+
+.setting-slider {
+    flex-grow: 1;
+    margin: 0 8px;
+}
+
+/* Slider track */
+.setting-slider .unity-base-slider__tracker {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-width: 0;
+    border-radius: 2px;
+    height: 4px;
+}
+
+/* Slider dragger */
+.setting-slider .unity-base-slider__dragger {
+    width: 14px;
+    height: 14px;
+    border-radius: 7px;
+    background-color: rgba(120, 170, 255, 0.9);
+    border-width: 0;
+    margin-top: -6px;
+}
+
+.setting-slider .unity-base-slider__dragger:hover {
+    background-color: rgba(140, 190, 255, 1);
+}
+
+/* Hide slider text input */
+.setting-slider .unity-base-slider__input > .unity-text-field {
+    display: none;
+}
+
+.setting-value {
+    width: 36px;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 11px;
+    -unity-text-align: middle-right;
+    flex-shrink: 0;
+}

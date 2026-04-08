@@ -17,3 +17,4 @@ MonoBehaviour:
   windowAlpha: 0.4
   enableClickThrough: 0
   maxChatBubbles: 20
+  usageAutoSaveIntervalMinutes: 5

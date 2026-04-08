@@ -7,7 +7,7 @@
 .chat-toggle-btn {
     position: absolute;
     bottom: 12px;
-    right: 84px;
+    right: 132px;
     width: 64px;
     height: 64px;
     border-radius: 32px;
@@ -22,11 +22,41 @@
     background-color: rgba(60, 60, 60, 0.9);
 }
 
+/* ── Chat Panel Header ── */
+.chat-panel-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.chat-panel-title {
+    color: #e0e0e0;
+    font-size: 16px;
+    -unity-font-style: bold;
+}
+
+.chat-close-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    background-color: transparent;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+    border-width: 0;
+    -unity-text-align: middle-center;
+}
+
+.chat-close-btn:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
 /* ── Chat Panel ── */
 .chat-panel {
     position: absolute;
     bottom: 84px;
-    right: 84px;
+    right: 132px;
     width: 300px;
     height: 420px;
     background-color: rgba(20, 20, 25, 0.92);

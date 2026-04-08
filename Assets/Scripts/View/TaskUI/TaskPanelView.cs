@@ -3,6 +3,8 @@ using ChillAI.Controller;
 using ChillAI.Core.Config;
 using ChillAI.Core.Signals;
 using ChillAI.Model.TaskDecomposition;
+using ChillAI.Service.Platform;
+using ChillAI.View.Window;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Zenject;
@@ -16,6 +18,7 @@ namespace ChillAI.View.TaskUI
         TaskDecompositionController _controller;
         ITaskDecompositionReader _taskReader;
         IConfigReader _configReader;
+        IWindowService _windowService;
 
         // UI Elements
         Button _toggleBtn;
@@ -49,17 +52,22 @@ namespace ChillAI.View.TaskUI
         string _activeEditOriginalText;
         bool _isCommittingEdit;
 
+        // Window drag
+        WindowDragManipulator _dragManipulator;
+
         [Inject]
         public void Construct(
             SignalBus signalBus,
             TaskDecompositionController controller,
             ITaskDecompositionReader taskReader,
-            IConfigReader configReader)
+            IConfigReader configReader,
+            IWindowService windowService)
         {
             _signalBus = signalBus;
             _controller = controller;
             _taskReader = taskReader;
             _configReader = configReader;
+            _windowService = windowService;
         }
 
         void OnEnable()
@@ -86,6 +94,10 @@ namespace ChillAI.View.TaskUI
 
             _panel.RegisterCallback<MouseDownEvent>(OnPanelMouseDown);
 
+            var header = root.Q<VisualElement>(className: "panel-header");
+            _dragManipulator = new WindowDragManipulator(_windowService);
+            header.AddManipulator(_dragManipulator);
+
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
             _signalBus?.Subscribe<TaskAddedViaChatSignal>(OnTaskAddedViaChat);
@@ -102,6 +114,9 @@ namespace ChillAI.View.TaskUI
             _closeBtn.clicked -= OnClose;
             _addListBtn.clicked -= OnAddListClicked;
             _panel.UnregisterCallback<MouseDownEvent>(OnPanelMouseDown);
+
+            var header = _panel.Q<VisualElement>(className: "panel-header");
+            header?.RemoveManipulator(_dragManipulator);
 
             _signalBus?.TryUnsubscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);

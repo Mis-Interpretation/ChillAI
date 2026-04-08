@@ -7,6 +7,12 @@
     <!-- Chat Panel (toggleable) -->
     <ui:VisualElement name="chat-panel" class="chat-panel hidden">
 
+        <!-- Header (drag handle) -->
+        <ui:VisualElement class="chat-panel-header">
+            <ui:Label class="chat-panel-title" text="Chat" />
+            <ui:Button name="chat-close-btn" class="chat-close-btn" text="&#x2715;" />
+        </ui:VisualElement>
+
         <!-- Messages ScrollView -->
         <ui:ScrollView name="chat-messages" class="chat-messages" />
 

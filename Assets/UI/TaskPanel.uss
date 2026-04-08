@@ -7,7 +7,7 @@
 .toggle-btn {
     position: absolute;
     bottom: 12px;
-    right: 12px;
+    right: 60px;
     width: 64px;
     height: 64px;
     border-radius: 32px;
@@ -27,7 +27,7 @@
 .panel {
     position: absolute;
     bottom: 84px;
-    right: 12px;
+    right: 60px;
     width: 460px;
     height: 420px;
     background-color: rgba(20, 20, 25, 0.92);

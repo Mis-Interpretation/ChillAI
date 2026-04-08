@@ -1,0 +1,44 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="SystemMenu.uss" />
+
+    <!-- Small circular menu button (drag handle + click to open menu) -->
+    <ui:Label name="menu-btn" class="menu-btn" text="&#x2630;" />
+
+    <!-- Popup menu (hidden by default) -->
+    <ui:VisualElement name="menu-popup" class="menu-popup hidden">
+        <ui:Button name="settings-btn" class="menu-item" text="&#x2699; &#x8BBE;&#x7F6E;" />
+        <ui:Button name="exit-btn" class="menu-item menu-item--danger" text="&#x2715; &#x9000;&#x51FA;" />
+    </ui:VisualElement>
+
+    <!-- Settings panel (hidden by default) -->
+    <ui:VisualElement name="settings-panel" class="settings-panel hidden">
+
+        <!-- Header (also a drag handle) -->
+        <ui:VisualElement class="settings-header">
+            <ui:Label class="settings-title" text="&#x8BBE;&#x7F6E;" />
+            <ui:Button name="settings-close-btn" class="close-btn" text="&#x2715;" />
+        </ui:VisualElement>
+
+        <!-- Window Alpha -->
+        <ui:VisualElement class="setting-row">
+            <ui:Label text="&#x900F;&#x660E;&#x5EA6;" class="setting-label" />
+            <ui:Slider name="alpha-slider" low-value="0.1" high-value="1" class="setting-slider" />
+            <ui:Label name="alpha-value" class="setting-value" />
+        </ui:VisualElement>
+
+        <!-- Frame Rate -->
+        <ui:VisualElement class="setting-row">
+            <ui:Label text="&#x5E27;&#x7387;" class="setting-label" />
+            <ui:SliderInt name="fps-slider" low-value="10" high-value="60" class="setting-slider" />
+            <ui:Label name="fps-value" class="setting-value" />
+        </ui:VisualElement>
+
+        <!-- Max Chat Bubbles -->
+        <ui:VisualElement class="setting-row">
+            <ui:Label text="&#x6D88;&#x606F;&#x4E0A;&#x9650;" class="setting-label" />
+            <ui:SliderInt name="bubbles-slider" low-value="5" high-value="100" class="setting-slider" />
+            <ui:Label name="bubbles-value" class="setting-value" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>
