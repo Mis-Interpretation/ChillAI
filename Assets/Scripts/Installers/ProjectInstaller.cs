@@ -6,6 +6,7 @@ using ChillAI.Model.BehaviorMapping;
 using ChillAI.Model.Expression;
 using ChillAI.Model.ProcessMonitor;
 using ChillAI.Model.TaskDecomposition;
+using ChillAI.Model.UsageTracking;
 using ChillAI.Service.AI;
 using ChillAI.Service.Platform;
 using UnityEngine;
@@ -51,6 +52,8 @@ namespace ChillAI.Installers
                 .To<ExpressionStateModel>().AsSingle();
             Container.Bind(typeof(ITaskDecompositionReader), typeof(ITaskDecompositionWriter))
                 .To<TaskDecompositionModel>().AsSingle();
+            Container.Bind(typeof(IUsageTrackingReader), typeof(IUsageTrackingWriter))
+                .To<UsageTrackingModel>().AsSingle();
 
             // Services
             Container.Bind<IWindowService>()
@@ -63,6 +66,7 @@ namespace ChillAI.Installers
             Container.BindInterfacesAndSelfTo<ExpressionController>().AsSingle();
             Container.Bind<TaskDecompositionController>().AsSingle();
             Container.Bind<EmojiChatController>().AsSingle();
+            Container.BindInterfacesAndSelfTo<UsageTrackingController>().AsSingle();
         }
     }
 }

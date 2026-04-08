@@ -26,5 +26,10 @@ namespace ChillAI.Core.Settings
         [Tooltip("Maximum number of chat bubbles visible in the chat panel")]
         [Range(5, 100)]
         public int maxChatBubbles = 20;
+
+        [Header("Usage Tracking")]
+        [Tooltip("Auto-save interval in minutes to prevent crash data loss")]
+        [Range(1f, 60f)]
+        public float usageAutoSaveIntervalMinutes = 10f;
     }
 }
