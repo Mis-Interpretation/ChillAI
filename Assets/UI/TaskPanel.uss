@@ -1,0 +1,132 @@
+/* Hide utility */
+.hidden {
+    display: none;
+}
+
+/* Toggle button */
+.toggle-btn {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 64px;
+    height: 64px;
+    border-radius: 32px;
+    background-color: rgba(30, 30, 30, 0.85);
+    color: #ffffff;
+    font-size: 14px;
+    -unity-font-style: bold;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.toggle-btn:hover {
+    background-color: rgba(60, 60, 60, 0.9);
+}
+
+/* Panel */
+.panel {
+    position: absolute;
+    bottom: 84px;
+    right: 12px;
+    width: 320px;
+    max-height: 420px;
+    background-color: rgba(20, 20, 25, 0.92);
+    border-radius: 12px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.08);
+    padding: 12px;
+}
+
+/* Input row */
+.input-row {
+    flex-direction: row;
+    margin-bottom: 8px;
+}
+
+.task-input {
+    flex-grow: 1;
+    min-height: 36px;
+    margin-right: 6px;
+    background-color: transparent;
+    border-radius: 6px;
+    border-width: 0;
+    color: #e0e0e0;
+    font-size: 13px;
+}
+
+.task-input > .unity-text-field__input {
+    background-color: rgba(40, 40, 50, 0.95);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.1);
+    color: #e0e0e0;
+    padding: 4px 8px;
+    min-height: 36px;
+}
+
+.task-input > .unity-text-field__input > .unity-text-element {
+    color: #e0e0e0;
+}
+
+.task-input:focus {
+    border-color: rgba(100, 160, 255, 0.5);
+}
+
+.submit-btn {
+    width: 48px;
+    min-height: 36px;
+    border-radius: 6px;
+    background-color: rgba(80, 140, 255, 0.7);
+    color: #ffffff;
+    font-size: 13px;
+    -unity-font-style: bold;
+    border-width: 0;
+}
+
+.submit-btn:hover {
+    background-color: rgba(100, 160, 255, 0.85);
+}
+
+/* Status & Loading */
+.status-label {
+    color: rgba(255, 180, 80, 0.9);
+    font-size: 11px;
+    margin-bottom: 4px;
+    white-space: normal;
+}
+
+.loading-label {
+    color: rgba(150, 200, 255, 0.8);
+    font-size: 12px;
+    -unity-font-style: italic;
+    margin-bottom: 6px;
+}
+
+/* Task list */
+.task-list {
+    flex-grow: 1;
+    max-height: 300px;
+}
+
+/* Individual task item */
+.task-item {
+    background-color: rgba(255, 255, 255, 0.04);
+    border-radius: 6px;
+    padding: 8px;
+    margin-bottom: 4px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.05);
+}
+
+.task-item-title {
+    color: #e8e8e8;
+    font-size: 13px;
+    -unity-font-style: bold;
+    margin-bottom: 2px;
+}
+
+.task-item-desc {
+    color: rgba(200, 200, 200, 0.7);
+    font-size: 11px;
+    white-space: normal;
+}

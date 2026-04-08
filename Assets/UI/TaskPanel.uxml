@@ -1,0 +1,25 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements">
+    <ui:Style src="TaskPanel.uss" />
+
+    <!-- Toggle Button (always visible) -->
+    <ui:Button name="toggle-btn" class="toggle-btn" text="Task" />
+
+    <!-- Input + List Panel (toggleable) -->
+    <ui:VisualElement name="panel" class="panel hidden">
+
+        <!-- Input Area -->
+        <ui:VisualElement class="input-row">
+            <ui:TextField name="task-input" class="task-input" />
+            <ui:Button name="submit-btn" class="submit-btn" text="Go" />
+        </ui:VisualElement>
+
+        <!-- Status / Error -->
+        <ui:Label name="status-label" class="status-label" />
+
+        <!-- Loading -->
+        <ui:Label name="loading-label" class="loading-label hidden" text="Thinking..." />
+
+        <!-- Subtask List -->
+        <ui:ScrollView name="task-list" class="task-list" />
+    </ui:VisualElement>
+</ui:UXML>

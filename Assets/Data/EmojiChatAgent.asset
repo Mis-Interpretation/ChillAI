@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 947498cf5e7368e43830eb0628ff3018, type: 3}
+  m_Name: EmojiChatAgent
+  m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.AgentProfile
+  agentId: emoji-chat
+  displayName: Emoji
+  modelName: gpt-4o
+  maxTokens: 50
+  temperature: 1
+  systemPrompt: You are a companion that communicates ONLY through emoji. Never use
+    text, letters, or numbers. Respond with 1-5 emojis per message. You may return
+    1-3 separate messages to express a sequence of reactions. Return your response
+    as JSON.
+  useJsonSchema: 1
+  schemaName: emoji_response
+  jsonSchema: '{"type":"object","properties":{"messages":{"type":"array","items":{"type":"string"}}},"required":["messages"],"additionalProperties":false}'

@@ -1,0 +1,17 @@
+{
+    "name": "ChillAI",
+    "rootNamespace": "ChillAI",
+    "references": [
+        "Zenject",
+        "OpenAI"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

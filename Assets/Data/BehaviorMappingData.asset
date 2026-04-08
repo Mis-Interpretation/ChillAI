@@ -1,0 +1,68 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b0de4299ad0f65a4b85674d0c780ee31, type: 3}
+  m_Name: BehaviorMappingData
+  m_EditorClassIdentifier: Assembly-CSharp::ChillAI.Model.BehaviorMapping.BehaviorMappingData
+  defaultCategory: 0
+  mappings:
+  - processName: devenv
+    category: 1
+  - processName: Code
+    category: 1
+  - processName: rider64
+    category: 1
+  - processName: idea64
+    category: 1
+  - processName: WINWORD
+    category: 1
+  - processName: EXCEL
+    category: 1
+  - processName: POWERPNT
+    category: 1
+  - processName: Notion
+    category: 1
+  - processName: Obsidian
+    category: 1
+  - processName: steam
+    category: 2
+  - processName: steamwebhelper
+    category: 2
+  - processName: EpicGamesLauncher
+    category: 2
+  - processName: chrome
+    category: 3
+  - processName: msedge
+    category: 3
+  - processName: firefox
+    category: 3
+  - processName: Photoshop
+    category: 4
+  - processName: Illustrator
+    category: 4
+  - processName: Unity
+    category: 4
+  - processName: blender
+    category: 4
+  - processName: Spotify
+    category: 5
+  - processName: PotPlayerMini64
+    category: 5
+  - processName: Cursor
+    category: 1
+  - processName: Claude
+    category: 1
+  - processName: Maya
+    category: 4
+  - processName: Figma
+    category: 4
+  - processName: Photoshop
+    category: 4
