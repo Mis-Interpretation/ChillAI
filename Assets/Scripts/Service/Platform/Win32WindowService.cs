@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ChillAI.Service.Platform
@@ -129,6 +130,75 @@ namespace ChillAI.Service.Platform
             Win32Interop.GetCursorPos(out var point);
             return (point.X, point.Y);
         }
+
+        List<Win32Interop.RECT> EnumerateMonitors()
+        {
+            var monitors = new List<Win32Interop.RECT>();
+            Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
+                (IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData) =>
+                {
+                    var info = new Win32Interop.MONITORINFOEX { cbSize = 72 };
+                    if (Win32Interop.GetMonitorInfo(hMonitor, ref info))
+                        monitors.Add(info.rcWork);
+                    return true;
+                }, IntPtr.Zero);
+            return monitors;
+        }
+
+        int GetCurrentMonitorIndex(List<Win32Interop.RECT> monitors)
+        {
+            var hwnd = Hwnd;
+            if (hwnd == IntPtr.Zero) return 0;
+            var currentMonitor = Win32Interop.MonitorFromWindow(hwnd, Win32Interop.MONITOR_DEFAULTTONEAREST);
+            int index = 0;
+            Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
+                (IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData) =>
+                {
+                    if (hMonitor == currentMonitor) return false;
+                    index++;
+                    return true;
+                }, IntPtr.Zero);
+            return index < monitors.Count ? index : 0;
+        }
+
+        public int GetDisplayCount()
+        {
+            return EnumerateMonitors().Count;
+        }
+
+        public void MoveToDisplay(int displayIndex)
+        {
+            var hwnd = Hwnd;
+            if (hwnd == IntPtr.Zero) return;
+
+            var monitors = EnumerateMonitors();
+            if (monitors.Count == 0) return;
+
+            int idx = displayIndex % monitors.Count;
+            var target = monitors[idx];
+
+            // Get current window size
+            Win32Interop.GetWindowRect(hwnd, out var currentRect);
+            int width = currentRect.Right - currentRect.Left;
+            int height = currentRect.Bottom - currentRect.Top;
+
+            // Get relative position on current monitor
+            var currentMonitors = monitors;
+            int curIdx = GetCurrentMonitorIndex(currentMonitors);
+            var curMon = currentMonitors[curIdx];
+
+            float relX = (currentRect.Left - curMon.Left) / (float)(curMon.Right - curMon.Left);
+            float relY = (currentRect.Top - curMon.Top) / (float)(curMon.Bottom - curMon.Top);
+
+            // Apply relative position to target monitor
+            int newX = target.Left + (int)(relX * (target.Right - target.Left));
+            int newY = target.Top + (int)(relY * (target.Bottom - target.Top));
+
+            Win32Interop.SetWindowPos(hwnd, IntPtr.Zero, newX, newY, width, height,
+                Win32Interop.SWP_NOZORDER | Win32Interop.SWP_NOACTIVATE);
+
+            Debug.Log($"[ChillAI] Moved window to display {idx} at ({newX}, {newY})");
+        }
 #else
         public void MakeTransparent(float alpha)
         {
@@ -160,6 +230,17 @@ namespace ChillAI.Service.Platform
         {
             Debug.LogWarning("[ChillAI] GetCursorScreenPosition is only supported on Windows.");
             return (0, 0);
+        }
+
+        public int GetDisplayCount()
+        {
+            Debug.LogWarning("[ChillAI] GetDisplayCount is only supported on Windows.");
+            return 1;
+        }
+
+        public void MoveToDisplay(int displayIndex)
+        {
+            Debug.LogWarning("[ChillAI] MoveToDisplay is only supported on Windows.");
         }
 #endif
     }

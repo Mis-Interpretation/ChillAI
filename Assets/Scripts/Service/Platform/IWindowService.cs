@@ -8,5 +8,7 @@ namespace ChillAI.Service.Platform
         (int x, int y) GetWindowPosition();
         void SetWindowPosition(int x, int y);
         (int x, int y) GetCursorScreenPosition();
+        int GetDisplayCount();
+        void MoveToDisplay(int displayIndex);
     }
 }
