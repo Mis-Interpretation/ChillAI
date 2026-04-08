@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using ChillAI.Controller;
 using ChillAI.Core.Settings;
 using ChillAI.Service.Platform;
 using ChillAI.View.EmojiChat;
@@ -16,6 +17,7 @@ namespace ChillAI.View.SystemMenu
     {
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
+        [Inject] DisplaySwitchController _displaySwitchController;
 
         VisualElement _wrapper;
         VisualElement _menuBtn;
@@ -69,6 +71,7 @@ namespace ChillAI.View.SystemMenu
 
             // Menu items
             root.Q<Button>("settings-btn").clicked += OpenSettings;
+            root.Q<Button>("switch-display-btn").clicked += OnSwitchDisplay;
             root.Q<Button>("exit-btn").clicked += OnExit;
 
             // Settings panel
@@ -211,6 +214,14 @@ namespace ChillAI.View.SystemMenu
         {
             _appSettings.maxChatBubbles = evt.newValue;
             _bubblesValue.text = $"{evt.newValue}";
+        }
+
+        void OnSwitchDisplay()
+        {
+            _menuPopup.EnableInClassList("hidden", true);
+#if !UNITY_EDITOR
+            _displaySwitchController.CycleToNextDisplay();
+#endif
         }
 
         void OnExit()

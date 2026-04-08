@@ -7,6 +7,7 @@
     <!-- Popup menu (hidden by default) -->
     <ui:VisualElement name="menu-popup" class="menu-popup hidden">
         <ui:Button name="settings-btn" class="menu-item" text="&#x2699; &#x8BBE;&#x7F6E;" />
+        <ui:Button name="switch-display-btn" class="menu-item" text="&#x1F5B5; &#x5207;&#x6362;&#x5C4F;&#x5E55;" />
         <ui:Button name="exit-btn" class="menu-item menu-item--danger" text="&#x2715; &#x9000;&#x51FA;" />
     </ui:VisualElement>
 

@@ -73,6 +73,7 @@ namespace ChillAI.Installers
             Container.Bind<TaskDecompositionController>().AsSingle();
             Container.Bind<EmojiChatController>().AsSingle();
             Container.BindInterfacesAndSelfTo<UsageTrackingController>().AsSingle();
+            Container.Bind<DisplaySwitchController>().AsSingle();
         }
     }
 }
