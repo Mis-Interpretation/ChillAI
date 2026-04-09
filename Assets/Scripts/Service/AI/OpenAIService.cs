@@ -13,14 +13,22 @@ namespace ChillAI.Service.AI
     public class OpenAIService : IAIService
     {
         readonly IConfigReader _configReader;
+        readonly AppSettings _appSettings;
 
         OpenAIClient _client;
 
-        public bool IsConfigured => _configReader.HasApiKey;
+        bool HasEffectiveApiKey => !string.IsNullOrWhiteSpace(_appSettings.openaiApiKey) || _configReader.HasApiKey;
 
-        public OpenAIService(IConfigReader configReader)
+        string EffectiveApiKey => !string.IsNullOrWhiteSpace(_appSettings.openaiApiKey)
+            ? _appSettings.openaiApiKey
+            : _configReader.OpenAIApiKey;
+
+        public bool IsConfigured => HasEffectiveApiKey;
+
+        public OpenAIService(IConfigReader configReader, AppSettings appSettings)
         {
             _configReader = configReader;
+            _appSettings = appSettings;
         }
 
         OpenAIClient GetClient()
@@ -30,7 +38,7 @@ namespace ChillAI.Service.AI
                 if (!IsConfigured)
                     throw new InvalidOperationException("OpenAI API key is not configured.");
 
-                _client = new OpenAIClient(new OpenAIAuthentication(_configReader.OpenAIApiKey));
+                _client = new OpenAIClient(new OpenAIAuthentication(EffectiveApiKey));
             }
             return _client;
         }

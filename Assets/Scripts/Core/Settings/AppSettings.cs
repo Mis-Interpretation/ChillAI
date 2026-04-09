@@ -27,6 +27,10 @@ namespace ChillAI.Core.Settings
         [Range(5, 100)]
         public int maxChatBubbles = 20;
 
+        [Header("OpenAI")]
+        [Tooltip("Built-in API key for testing distribution. Takes priority over config.json when not empty.")]
+        public string openaiApiKey = "";
+
         [Header("Usage Tracking")]
         [Tooltip("Auto-save interval in minutes to prevent crash data loss")]
         [Range(1f, 60f)]

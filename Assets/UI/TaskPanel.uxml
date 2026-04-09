@@ -1,38 +1,21 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:Style src="TaskPanel.uss" />
-
-    <!-- Toggle Button (always visible) -->
-    <ui:Button name="toggle-btn" class="toggle-btn" text="Todo" />
-
-    <!-- Main Panel -->
-    <ui:VisualElement name="panel" class="panel hidden">
-
-        <!-- Header -->
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/TaskPanel.uss?fileID=7433441132597879392&amp;guid=9e89d11055c06aa43aeee1c565879ac7&amp;type=3#TaskPanel"/>
+    <ui:Button name="toggle-btn" text="Todo" class="toggle-btn" style="translate: 0 -25px;"/>
+    <ui:VisualElement name="panel" class="panel hidden" style="translate: 0 -25px;">
         <ui:VisualElement class="panel-header">
-            <ui:Label class="panel-title" text="待办事项列表" />
-            <ui:Button name="close-btn" class="close-btn" text="&#x2715;" />
+            <ui:Label text="待办事项列表" class="panel-title"/>
+            <ui:Button name="close-btn" text="✕" class="close-btn"/>
         </ui:VisualElement>
-
-        <!-- Status -->
-        <ui:Label name="status-label" class="status-label" />
-
-        <!-- Two-column body -->
+        <ui:Label name="status-label" class="status-label"/>
         <ui:VisualElement class="columns">
-
-            <!-- Left: big events -->
             <ui:VisualElement class="col-left">
-                <ui:ScrollView name="list-scroll" class="list-scroll" />
-                <ui:Button name="add-list-btn" class="add-list-btn" text="＋" />
+                <ui:ScrollView name="list-scroll" class="list-scroll"/>
+                <ui:Button name="add-list-btn" text="＋" class="add-list-btn"/>
             </ui:VisualElement>
-
-            <!-- Divider -->
-            <ui:VisualElement class="col-divider" />
-
-            <!-- Right: subtasks of selected big event -->
+            <ui:VisualElement class="col-divider"/>
             <ui:VisualElement class="col-right">
-                <ui:ScrollView name="task-scroll" class="task-scroll" />
+                <ui:ScrollView name="task-scroll" class="task-scroll"/>
             </ui:VisualElement>
-
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

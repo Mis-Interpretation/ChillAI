@@ -1,50 +1,33 @@
-<ui:UXML xmlns:ui="UnityEngine.UIElements">
-    <ui:Style src="SystemMenu.uss" />
-
-    <!-- Process name HUD (moves with menu via _wrapper; container for future animation) -->
-    <ui:VisualElement name="active-process-hud-root" class="active-process-hud-root">
-        <ui:Label name="active-process-hud" class="active-process-hud" text="" />
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/SystemMenu.uss?fileID=7433441132597879392&amp;guid=d33962036da03bb48b21e47de8ae5ac8&amp;type=3#SystemMenu"/>
+    <ui:VisualElement name="active-process-hud-root" class="active-process-hud-root" style="bottom: 4px; right: 30px;">
+        <ui:Label name="active-process-hud" text="" class="active-process-hud"/>
     </ui:VisualElement>
-
-    <!-- Small circular menu button (drag handle + click to open menu) -->
-    <ui:Label name="menu-btn" class="menu-btn" text="&#x2630;" />
-
-    <!-- Popup menu (hidden by default) -->
-    <ui:VisualElement name="menu-popup" class="menu-popup hidden">
-        <ui:Button name="settings-btn" class="menu-item" text="&#x2699; &#x8BBE;&#x7F6E;" />
-        <ui:Button name="switch-display-btn" class="menu-item" text="&#x1F5B5; &#x5207;&#x6362;&#x5C4F;&#x5E55;" />
-        <ui:Button name="exit-btn" class="menu-item menu-item--danger" text="&#x2715; &#x9000;&#x51FA;" />
+    <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -25px;">
+        <ui:Button name="settings-btn" text="⚙ 设置" class="menu-item"/>
+        <ui:Button name="switch-display-btn" text="🖵 切换屏幕" class="menu-item"/>
+        <ui:Button name="exit-btn" text="✕ 退出" class="menu-item menu-item--danger"/>
     </ui:VisualElement>
-
-    <!-- Settings panel (hidden by default) -->
     <ui:VisualElement name="settings-panel" class="settings-panel hidden">
-
-        <!-- Header (also a drag handle) -->
         <ui:VisualElement class="settings-header">
-            <ui:Label class="settings-title" text="&#x8BBE;&#x7F6E;" />
-            <ui:Button name="settings-close-btn" class="close-btn" text="&#x2715;" />
+            <ui:Label text="设置" class="settings-title"/>
+            <ui:Button name="settings-close-btn" text="✕" class="close-btn"/>
         </ui:VisualElement>
-
-        <!-- Window Alpha -->
         <ui:VisualElement class="setting-row">
-            <ui:Label text="&#x900F;&#x660E;&#x5EA6;" class="setting-label" />
-            <ui:Slider name="alpha-slider" low-value="0.1" high-value="1" class="setting-slider" />
-            <ui:Label name="alpha-value" class="setting-value" />
+            <ui:Label text="透明度" class="setting-label"/>
+            <ui:Slider name="alpha-slider" low-value="0.1" high-value="1" class="setting-slider"/>
+            <ui:Label name="alpha-value" class="setting-value"/>
         </ui:VisualElement>
-
-        <!-- Frame Rate -->
         <ui:VisualElement class="setting-row">
-            <ui:Label text="&#x5E27;&#x7387;" class="setting-label" />
-            <ui:SliderInt name="fps-slider" low-value="10" high-value="60" class="setting-slider" />
-            <ui:Label name="fps-value" class="setting-value" />
+            <ui:Label text="帧率" class="setting-label"/>
+            <ui:SliderInt name="fps-slider" low-value="10" high-value="60" class="setting-slider"/>
+            <ui:Label name="fps-value" class="setting-value"/>
         </ui:VisualElement>
-
-        <!-- Max Chat Bubbles -->
         <ui:VisualElement class="setting-row">
-            <ui:Label text="&#x6D88;&#x606F;&#x4E0A;&#x9650;" class="setting-label" />
-            <ui:SliderInt name="bubbles-slider" low-value="5" high-value="100" class="setting-slider" />
-            <ui:Label name="bubbles-value" class="setting-value" />
+            <ui:Label text="消息上限" class="setting-label"/>
+            <ui:SliderInt name="bubbles-slider" low-value="5" high-value="100" class="setting-slider"/>
+            <ui:Label name="bubbles-value" class="setting-value"/>
         </ui:VisualElement>
-
     </ui:VisualElement>
+    <ui:Label name="menu-btn" text="☰" class="menu-btn" style="translate: 0 -25px;"/>
 </ui:UXML>
