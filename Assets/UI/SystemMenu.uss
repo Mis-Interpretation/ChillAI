@@ -3,6 +3,28 @@
     display: none;
 }
 
+/* ── Active process HUD (left of menu button) ── */
+.active-process-hud-root {
+    position: absolute;
+    bottom: 24px;
+    right: 60px;
+    max-width: 480px;
+    height: 40px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+}
+
+.active-process-hud {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 22px;
+    -unity-text-align: middle-right;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    flex-shrink: 1;
+}
+
 /* ── Menu Button ── */
 .menu-btn {
     position: absolute;

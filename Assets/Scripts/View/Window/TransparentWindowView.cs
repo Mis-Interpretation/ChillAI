@@ -35,7 +35,7 @@ namespace ChillAI.View.Window
 
             if (_appSettings.enableClickThrough)
             {
-                foreach (var doc in FindObjectsOfType<UIDocument>())
+                foreach (var doc in Object.FindObjectsByType<UIDocument>(FindObjectsSortMode.None))
                 {
                     var root = doc.rootVisualElement;
                     if (root?.panel == null) continue;

@@ -3,7 +3,8 @@
     "rootNamespace": "ChillAI",
     "references": [
         "Zenject",
-        "OpenAI"
+        "OpenAI",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

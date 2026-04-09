@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+using AOT;
 using UnityEngine;
 
 namespace ChillAI.Service.Platform
@@ -131,17 +133,52 @@ namespace ChillAI.Service.Platform
             return (point.X, point.Y);
         }
 
+        sealed class MonitorCollectContext
+        {
+            public List<Win32Interop.RECT> Monitors;
+        }
+
+        sealed class FindMonitorContext
+        {
+            public IntPtr Target;
+            public int Index;
+        }
+
+        /// <summary>IL2CPP requires a static method with MonoPInvokeCallback; lambdas enumerate 0 monitors in player builds.</summary>
+        [MonoPInvokeCallback(typeof(Win32Interop.MonitorEnumProc))]
+        static bool CollectMonitorsProc(IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData)
+        {
+            var ctx = (MonitorCollectContext)GCHandle.FromIntPtr(dwData).Target;
+            var info = new Win32Interop.MONITORINFOEX();
+            info.cbSize = Marshal.SizeOf<Win32Interop.MONITORINFOEX>();
+            if (Win32Interop.GetMonitorInfo(hMonitor, ref info))
+                ctx.Monitors.Add(info.rcWork);
+            return true;
+        }
+
+        [MonoPInvokeCallback(typeof(Win32Interop.MonitorEnumProc))]
+        static bool FindMonitorIndexProc(IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData)
+        {
+            var ctx = (FindMonitorContext)GCHandle.FromIntPtr(dwData).Target;
+            if (hMonitor == ctx.Target)
+                return false;
+            ctx.Index++;
+            return true;
+        }
+
         List<Win32Interop.RECT> EnumerateMonitors()
         {
             var monitors = new List<Win32Interop.RECT>();
-            Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
-                (IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData) =>
-                {
-                    var info = new Win32Interop.MONITORINFOEX { cbSize = 72 };
-                    if (Win32Interop.GetMonitorInfo(hMonitor, ref info))
-                        monitors.Add(info.rcWork);
-                    return true;
-                }, IntPtr.Zero);
+            var ctx = new MonitorCollectContext { Monitors = monitors };
+            var handle = GCHandle.Alloc(ctx);
+            try
+            {
+                Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, CollectMonitorsProc, GCHandle.ToIntPtr(handle));
+            }
+            finally
+            {
+                handle.Free();
+            }
             return monitors;
         }
 
@@ -150,15 +187,17 @@ namespace ChillAI.Service.Platform
             var hwnd = Hwnd;
             if (hwnd == IntPtr.Zero) return 0;
             var currentMonitor = Win32Interop.MonitorFromWindow(hwnd, Win32Interop.MONITOR_DEFAULTTONEAREST);
-            int index = 0;
-            Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero,
-                (IntPtr hMonitor, IntPtr hdcMonitor, ref Win32Interop.RECT lprcMonitor, IntPtr dwData) =>
-                {
-                    if (hMonitor == currentMonitor) return false;
-                    index++;
-                    return true;
-                }, IntPtr.Zero);
-            return index < monitors.Count ? index : 0;
+            var ctx = new FindMonitorContext { Target = currentMonitor, Index = 0 };
+            var handle = GCHandle.Alloc(ctx);
+            try
+            {
+                Win32Interop.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, FindMonitorIndexProc, GCHandle.ToIntPtr(handle));
+            }
+            finally
+            {
+                handle.Free();
+            }
+            return ctx.Index < monitors.Count ? ctx.Index : 0;
         }
 
         public int GetDisplayCount()

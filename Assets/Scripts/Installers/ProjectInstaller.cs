@@ -36,6 +36,7 @@ namespace ChillAI.Installers
             Container.DeclareSignal<BigEventChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<SubTaskCompletionChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<TaskAddedViaChatSignal>().OptionalSubscriber();
+            Container.DeclareSignal<DisplaySwitchedSignal>().OptionalSubscriber();
 
             // ScriptableObject settings (injected as instances)
             Container.BindInstance(appSettings);

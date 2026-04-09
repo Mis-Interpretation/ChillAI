@@ -1,15 +1,13 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.UIElements;
 
 namespace ChillAI.View.Window
 {
     /// <summary>
     /// UIElements manipulator that drags one or more VisualElements within the panel
-    /// by applying the same transform offset. Optional UGUI RectTransforms can move
-    /// in lockstep using screen-to-local conversion (correct when mixing UI Toolkit + uGUI).
+    /// by applying the same transform offset.
     /// When dragThreshold > 0, short clicks invoke OnClicked instead of dragging.
     /// Drag delta is derived from <see cref="Input.mousePosition"/> (uGUI convention) and
     /// converted per Unity docs for UI Toolkit via Y-flip before <see cref="RuntimePanelUtils.ScreenToPanel"/>.
@@ -17,7 +15,6 @@ namespace ChillAI.View.Window
     public class WindowDragManipulator : Manipulator
     {
         readonly VisualElement[] _moveTargets;
-        readonly RectTransform[] _uguiTargets;
         readonly float _dragThreshold;
 
         bool _isPointerDown;
@@ -25,7 +22,6 @@ namespace ChillAI.View.Window
         Vector2 _panelPointerDown;
         Vector3[] _startPositions;
         Vector2 _mouseScreenStart;
-        Vector2[] _uguiStartAnchored;
 
         /// <summary>Fires when pointer is released without exceeding the drag threshold.</summary>
         public event Action OnClicked;
@@ -33,8 +29,7 @@ namespace ChillAI.View.Window
         public WindowDragManipulator(
             VisualElement moveTarget,
             float dragThreshold = 0f,
-            VisualElement[] alsoMove = null,
-            RectTransform[] uguiAlsoMove = null)
+            VisualElement[] alsoMove = null)
         {
             _dragThreshold = dragThreshold;
 
@@ -48,21 +43,6 @@ namespace ChillAI.View.Window
             }
 
             _moveTargets = list.ToArray();
-
-            if (uguiAlsoMove != null && uguiAlsoMove.Length > 0)
-            {
-                var ug = new List<RectTransform>();
-                foreach (var r in uguiAlsoMove)
-                {
-                    if (r != null) ug.Add(r);
-                }
-
-                _uguiTargets = ug.Count > 0 ? ug.ToArray() : null;
-            }
-            else
-            {
-                _uguiTargets = null;
-            }
         }
 
         protected override void RegisterCallbacksOnTarget()
@@ -101,13 +81,6 @@ namespace ChillAI.View.Window
             return RuntimePanelUtils.ScreenToPanel(panel, b) - RuntimePanelUtils.ScreenToPanel(panel, a);
         }
 
-        static Camera GetCanvasCamera(RectTransform rt)
-        {
-            var canvas = rt.GetComponentInParent<Canvas>();
-            if (canvas == null) return null;
-            return canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-        }
-
         void OnPointerDown(PointerDownEvent evt)
         {
             if (evt.button != 0) return;
@@ -127,17 +100,6 @@ namespace ChillAI.View.Window
             for (var i = 0; i < _moveTargets.Length; i++)
                 _startPositions[i] = _moveTargets[i].transform.position;
 #pragma warning restore CS0618
-
-            if (_uguiTargets != null)
-            {
-                _uguiStartAnchored = new Vector2[_uguiTargets.Length];
-                for (var i = 0; i < _uguiTargets.Length; i++)
-                    _uguiStartAnchored[i] = _uguiTargets[i].anchoredPosition;
-            }
-            else
-            {
-                _uguiStartAnchored = null;
-            }
 
             _isPointerDown = true;
             _isDragging = false;
@@ -168,35 +130,22 @@ namespace ChillAI.View.Window
 
             var mouseNow = Input.mousePosition;
 
+            // One delta for every UITK root: separate UIDocument panels can map the same mouse motion to
+            // slightly different vectors — using per-panel d made menu / chat / task drift apart while dragging.
+            var refPanel = _moveTargets[0].panel;
+            var dShared = refPanel != null
+                ? PointerPanelDeltaFromMouse(refPanel, _mouseScreenStart, mouseNow)
+                : Vector2.zero;
+
             for (var i = 0; i < _moveTargets.Length; i++)
             {
                 var t = _moveTargets[i];
-                var p = t.panel;
-                if (p == null) continue;
+                if (t.panel == null) continue;
 
-                var d = PointerPanelDeltaFromMouse(p, _mouseScreenStart, mouseNow);
                 var s = _startPositions[i];
 #pragma warning disable CS0618
-                t.transform.position = new Vector3(s.x + d.x, s.y + d.y, s.z);
+                t.transform.position = new Vector3(s.x + dShared.x, s.y + dShared.y, s.z);
 #pragma warning restore CS0618
-            }
-
-            if (_uguiStartAnchored != null)
-            {
-                for (var i = 0; i < _uguiTargets.Length; i++)
-                {
-                    var rt = _uguiTargets[i];
-                    var parent = rt.parent as RectTransform;
-                    if (parent == null) continue;
-
-                    var cam = GetCanvasCamera(rt);
-                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        parent, _mouseScreenStart, cam, out var lp0);
-                    RectTransformUtility.ScreenPointToLocalPointInRectangle(
-                        parent, mouseNow, cam, out var lp1);
-
-                    rt.anchoredPosition = _uguiStartAnchored[i] + (lp1 - lp0);
-                }
             }
         }
 

@@ -1,6 +1,11 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements">
     <ui:Style src="SystemMenu.uss" />
 
+    <!-- Process name HUD (moves with menu via _wrapper; container for future animation) -->
+    <ui:VisualElement name="active-process-hud-root" class="active-process-hud-root">
+        <ui:Label name="active-process-hud" class="active-process-hud" text="" />
+    </ui:VisualElement>
+
     <!-- Small circular menu button (drag handle + click to open menu) -->
     <ui:Label name="menu-btn" class="menu-btn" text="&#x2630;" />
 
