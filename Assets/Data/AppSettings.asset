@@ -17,5 +17,5 @@ MonoBehaviour:
   windowAlpha: 0.4
   enableClickThrough: 1
   maxChatBubbles: 20
-  openaiApiKey: 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
+  openaiApiKey: 
   usageAutoSaveIntervalMinutes: 5
