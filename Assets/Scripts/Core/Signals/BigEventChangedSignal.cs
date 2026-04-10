@@ -5,7 +5,9 @@ namespace ChillAI.Core.Signals
         Added,
         Removed,
         SubTaskAdded,
-        SubTaskRemoved
+        SubTaskRemoved,
+        SubTaskReordered,
+        BigEventsReordered
     }
 
     public class BigEventChangedSignal

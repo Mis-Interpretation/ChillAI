@@ -27,6 +27,14 @@ namespace ChillAI.Core.Settings
         [Range(5, 100)]
         public int maxChatBubbles = 20;
 
+        [Tooltip("Allow task agent to auto-create tasks from chat intent")]
+        public bool autoGenerateTasks = false;
+
+        [Header("Task Panel")]
+        [Tooltip("How long to press (ms) before drag mode starts on task rows")]
+        [Range(50, 3000)]
+        public int taskPanelDragLongPressMs = 300;
+
         [Header("OpenAI")]
         [Tooltip("Built-in API key for testing distribution. Takes priority over config.json when not empty.")]
         public string openaiApiKey = "";

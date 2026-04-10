@@ -1,6 +1,7 @@
 using System;
 using ChillAI.Controller;
 using ChillAI.Core.Config;
+using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Service.Platform;
@@ -19,6 +20,7 @@ namespace ChillAI.View.TaskUI
         ITaskDecompositionReader _taskReader;
         IConfigReader _configReader;
         IWindowService _windowService;
+        AppSettings _appSettings;
 
         // UI Elements
         Button _toggleBtn;
@@ -44,6 +46,8 @@ namespace ChillAI.View.TaskUI
         float _lastListClickTime;
         string _lastListClickId;
         const float DoubleClickThreshold = 0.5f;
+        /// <summary>Top/bottom fraction of a list row treated as "insert line" gaps; middle is merge-into.</summary>
+        const float ListRowEdgeGapFraction = 0.24f;
 
         // Inline edit state
         TextField _activeEditField;
@@ -61,13 +65,15 @@ namespace ChillAI.View.TaskUI
             TaskDecompositionController controller,
             ITaskDecompositionReader taskReader,
             IConfigReader configReader,
-            IWindowService windowService)
+            IWindowService windowService,
+            AppSettings appSettings)
         {
             _signalBus = signalBus;
             _controller = controller;
             _taskReader = taskReader;
             _configReader = configReader;
             _windowService = windowService;
+            _appSettings = appSettings;
         }
 
         void OnEnable()
@@ -211,6 +217,7 @@ namespace ChillAI.View.TaskUI
         {
             var row = new VisualElement();
             row.AddToClassList("list-item");
+            row.userData = bigEvent.Id;
             if (bigEvent.Id == _selectedBigEventId)
                 row.AddToClassList("list-item--selected");
 
@@ -256,6 +263,16 @@ namespace ChillAI.View.TaskUI
             });
 
             deleteBtn.clicked += () => _controller.DeleteBigEvent(bigEventId);
+
+            // Long-press drag
+            var dragManip = new TaskItemDragManipulator(
+                () => new DragItemInfo { Type = DragItemType.BigEvent, ItemId = bigEventId },
+                ResolveDropTarget,
+                HandleDragEnd,
+                () => { CommitEditMode(); RemoveInlineInput(); },
+                _panel,
+                _appSettings.taskPanelDragLongPressMs);
+            row.AddManipulator(dragManip);
 
             return row;
         }
@@ -350,15 +367,25 @@ namespace ChillAI.View.TaskUI
             deleteBtn.clicked += () => _controller.DeleteSubTask(bigEventId, subTaskId);
 
             // Click label → inline edit
-            label.RegisterCallback<MouseDownEvent>(evt =>
+            label.RegisterCallback<ClickEvent>(evt =>
             {
-                if (evt.button != 0) return;
-                evt.StopPropagation();
-                EnterEditMode(label, evt.localMousePosition.x, "edit-field--sub", newText =>
+                if (evt.button != 0 || _activeEditField != null) return;
+                var localPos = label.WorldToLocal(evt.position);
+                EnterEditMode(label, localPos.x, "edit-field--sub", newText =>
                 {
                     _controller.UpdateSubTaskTitle(bigEventId, subTaskId, newText);
                 });
             });
+
+            // Long-press drag
+            var dragManip = new TaskItemDragManipulator(
+                () => new DragItemInfo { Type = DragItemType.SubTask, ItemId = subTaskId, ParentBigEventId = bigEventId },
+                ResolveDropTarget,
+                HandleDragEnd,
+                () => { CommitEditMode(); RemoveInlineInput(); },
+                _panel,
+                _appSettings.taskPanelDragLongPressMs);
+            row.AddManipulator(dragManip);
 
             return row;
         }
@@ -541,6 +568,10 @@ namespace ChillAI.View.TaskUI
                     RebuildLeftColumn();
                     break;
 
+                case BigEventChangeType.BigEventsReordered:
+                    RebuildLeftColumn();
+                    break;
+
                 case BigEventChangeType.Removed:
                     if (signal.BigEventId == _selectedBigEventId)
                         AutoSelectFirst();
@@ -550,6 +581,7 @@ namespace ChillAI.View.TaskUI
 
                 case BigEventChangeType.SubTaskAdded:
                 case BigEventChangeType.SubTaskRemoved:
+                case BigEventChangeType.SubTaskReordered:
                     if (signal.BigEventId == _selectedBigEventId)
                         RebuildRightColumn();
                     break;
@@ -585,6 +617,237 @@ namespace ChillAI.View.TaskUI
                 _badge.AddToClassList("hidden");
                 _pendingBadgeCount = 0;
             }).StartingIn(5000);
+        }
+
+        // ── Drag and Drop ──
+
+        DropTarget ResolveDropTarget(Vector2 panelPos, DragItemInfo info)
+        {
+            var listBounds = _listScroll.worldBound;
+            var taskBounds = _taskScroll.worldBound;
+
+            // SubTask dragged to left column → merge onto row vs promote in gap
+            if (info.Type == DragItemType.SubTask && listBounds.Contains(panelPos))
+                return ResolveSubTaskLeftColumnDrop(panelPos, info, listBounds);
+
+            // BigEvent dragged to right column → demote
+            if (info.Type == DragItemType.BigEvent && taskBounds.Contains(panelPos))
+            {
+                if (_selectedBigEventId != null && _selectedBigEventId != info.ItemId)
+                {
+                    float indicatorY = CalcIndicatorY(_taskScroll, panelPos.y, "sub-task-item");
+                    return new DropTarget
+                    {
+                        Type = DropTargetType.DemoteToSubTask,
+                        TargetBigEventId = _selectedBigEventId,
+                        IndicatorY = indicatorY,
+                        IndicatorLeft = taskBounds.x,
+                        IndicatorWidth = taskBounds.width
+                    };
+                }
+                return new DropTarget { Type = DropTargetType.None };
+            }
+
+            // BigEvent dragged within left column → reorder list
+            if (info.Type == DragItemType.BigEvent && listBounds.Contains(panelPos))
+            {
+                int insertIndex;
+                float indicatorY;
+                CalcInsertIndexAndIndicator(_listScroll, panelPos.y, "list-item",
+                    out insertIndex, out indicatorY);
+                return new DropTarget
+                {
+                    Type = DropTargetType.ReorderBigEvent,
+                    InsertIndex = insertIndex,
+                    IndicatorY = indicatorY,
+                    IndicatorLeft = listBounds.x,
+                    IndicatorWidth = listBounds.width
+                };
+            }
+
+            // SubTask dragged within right column → reorder
+            if (info.Type == DragItemType.SubTask && taskBounds.Contains(panelPos))
+            {
+                int insertIndex;
+                float indicatorY;
+                CalcInsertIndexAndIndicator(_taskScroll, panelPos.y, "sub-task-item",
+                    out insertIndex, out indicatorY);
+                return new DropTarget
+                {
+                    Type = DropTargetType.ReorderSubTask,
+                    InsertIndex = insertIndex,
+                    TargetBigEventId = info.ParentBigEventId,
+                    IndicatorY = indicatorY,
+                    IndicatorLeft = taskBounds.x,
+                    IndicatorWidth = taskBounds.width
+                };
+            }
+
+            return new DropTarget { Type = DropTargetType.None };
+        }
+
+        DropTarget ResolveSubTaskLeftColumnDrop(Vector2 panelPos, DragItemInfo info, Rect listBounds)
+        {
+            var container = _listScroll.contentContainer;
+
+            for (int i = 0; i < container.childCount; i++)
+            {
+                var child = container[i];
+                if (!child.ClassListContains("list-item")) continue;
+
+                var b = child.worldBound;
+                if (!b.Contains(panelPos)) continue;
+
+                float rowT = (panelPos.y - b.y) / Mathf.Max(b.height, 1f);
+                int rowListIndex = CountListItemsBefore(container, child);
+
+                if (rowT < ListRowEdgeGapFraction)
+                {
+                    return new DropTarget
+                    {
+                        Type = DropTargetType.PromoteToList,
+                        InsertIndex = rowListIndex,
+                        IndicatorY = b.y,
+                        IndicatorLeft = listBounds.x,
+                        IndicatorWidth = listBounds.width
+                    };
+                }
+
+                if (rowT > 1f - ListRowEdgeGapFraction)
+                {
+                    return new DropTarget
+                    {
+                        Type = DropTargetType.PromoteToList,
+                        InsertIndex = rowListIndex + 1,
+                        IndicatorY = b.yMax,
+                        IndicatorLeft = listBounds.x,
+                        IndicatorWidth = listBounds.width
+                    };
+                }
+
+                var targetId = child.userData as string;
+                if (string.IsNullOrEmpty(targetId) || targetId == info.ParentBigEventId)
+                    return new DropTarget { Type = DropTargetType.None };
+
+                return new DropTarget
+                {
+                    Type = DropTargetType.MergeSubTaskIntoBigEvent,
+                    TargetBigEventId = targetId,
+                    IndicatorLeft = b.x,
+                    IndicatorY = b.y,
+                    IndicatorWidth = b.width,
+                    IndicatorHeight = b.height,
+                    IsRowMergeHighlight = true
+                };
+            }
+
+            int insertIndex;
+            float indicatorY;
+            CalcInsertIndexAndIndicator(_listScroll, panelPos.y, "list-item",
+                out insertIndex, out indicatorY);
+            return new DropTarget
+            {
+                Type = DropTargetType.PromoteToList,
+                InsertIndex = insertIndex,
+                IndicatorY = indicatorY,
+                IndicatorLeft = listBounds.x,
+                IndicatorWidth = listBounds.width
+            };
+        }
+
+        static int CountListItemsBefore(VisualElement container, VisualElement item)
+        {
+            int n = 0;
+            for (int i = 0; i < container.childCount; i++)
+            {
+                var c = container[i];
+                if (c == item)
+                    return n;
+                if (c.ClassListContains("list-item"))
+                    n++;
+            }
+            return n;
+        }
+
+        void CalcInsertIndexAndIndicator(ScrollView scroll, float panelY, string itemClass,
+            out int insertIndex, out float indicatorY)
+        {
+            var container = scroll.contentContainer;
+            insertIndex = 0;
+            indicatorY = scroll.worldBound.y;
+
+            int itemCount = 0;
+            for (int i = 0; i < container.childCount; i++)
+            {
+                var child = container[i];
+                if (!child.ClassListContains(itemClass)) continue;
+                var bounds = child.worldBound;
+                float midY = bounds.y + bounds.height * 0.5f;
+                if (panelY > midY)
+                {
+                    itemCount++;
+                    insertIndex = itemCount;
+                    indicatorY = bounds.yMax;
+                }
+                else
+                {
+                    indicatorY = bounds.y;
+                    break;
+                }
+            }
+        }
+
+        float CalcIndicatorY(ScrollView scroll, float panelY, string itemClass)
+        {
+            int unused;
+            float indicatorY;
+            CalcInsertIndexAndIndicator(scroll, panelY, itemClass, out unused, out indicatorY);
+            return indicatorY;
+        }
+
+        void HandleDragEnd(DragItemInfo info, DropTarget dropTarget)
+        {
+            switch (dropTarget.Type)
+            {
+                case DropTargetType.ReorderSubTask:
+                    _controller.ReorderSubTask(
+                        info.ParentBigEventId, info.ItemId, dropTarget.InsertIndex);
+                    break;
+
+                case DropTargetType.ReorderBigEvent:
+                    _controller.ReorderBigEvent(info.ItemId, dropTarget.InsertIndex);
+                    break;
+
+                case DropTargetType.PromoteToList:
+                    var newId = _controller.PromoteSubTaskToBigEvent(
+                        info.ParentBigEventId, info.ItemId, dropTarget.InsertIndex);
+                    if (newId != null)
+                    {
+                        _selectedBigEventId = newId;
+                        RebuildLeftColumn();
+                        RebuildRightColumn();
+                    }
+                    break;
+
+                case DropTargetType.MergeSubTaskIntoBigEvent:
+                    _selectedBigEventId = dropTarget.TargetBigEventId;
+                    _controller.MoveSubTaskToBigEvent(
+                        info.ParentBigEventId, info.ItemId, dropTarget.TargetBigEventId);
+                    RebuildLeftColumn();
+                    RebuildRightColumn();
+                    break;
+
+                case DropTargetType.DemoteToSubTask:
+                    bool wasDemotedSelected = info.ItemId == _selectedBigEventId;
+                    _controller.DemoteBigEventToSubTask(info.ItemId, dropTarget.TargetBigEventId);
+                    if (wasDemotedSelected)
+                    {
+                        _selectedBigEventId = dropTarget.TargetBigEventId;
+                        RebuildLeftColumn();
+                        RebuildRightColumn();
+                    }
+                    break;
+            }
         }
 
         // ── Helpers ──

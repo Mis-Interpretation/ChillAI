@@ -13,6 +13,10 @@ namespace ChillAI.Model.TaskDecomposition
         void RemoveSubTask(string bigEventId, string subTaskId);
         void UpdateBigEventTitle(string bigEventId, string newTitle);
         void UpdateSubTaskTitle(string bigEventId, string subTaskId, string newTitle);
+        void MoveSubTaskToIndex(string bigEventId, string subTaskId, int newIndex);
+        SubTask DetachSubTask(string bigEventId, string subTaskId);
+        void InsertBigEvent(int index, BigEvent bigEvent);
+        void MoveBigEventToIndex(string bigEventId, int newIndex);
         void Clear();
         void Save();
         void Load();

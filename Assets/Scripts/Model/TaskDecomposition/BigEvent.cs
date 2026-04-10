@@ -43,13 +43,36 @@ namespace ChillAI.Model.TaskDecomposition
         public void RemoveSubTask(string subTaskId)
         {
             _subTasks.RemoveAll(s => s.Id == subTaskId);
-            for (int i = 0; i < _subTasks.Count; i++)
-                _subTasks[i].Order = i + 1;
+            ReindexSubTasks();
+        }
+
+        public void InsertSubTask(int index, SubTask subTask)
+        {
+            index = Math.Max(0, Math.Min(index, _subTasks.Count));
+            _subTasks.Insert(index, subTask);
+            ReindexSubTasks();
+        }
+
+        public void MoveSubTask(string subTaskId, int newIndex)
+        {
+            var idx = _subTasks.FindIndex(s => s.Id == subTaskId);
+            if (idx < 0) return;
+            var task = _subTasks[idx];
+            _subTasks.RemoveAt(idx);
+            newIndex = Math.Max(0, Math.Min(newIndex, _subTasks.Count));
+            _subTasks.Insert(newIndex, task);
+            ReindexSubTasks();
         }
 
         public void ClearSubTasks()
         {
             _subTasks.Clear();
+        }
+
+        void ReindexSubTasks()
+        {
+            for (int i = 0; i < _subTasks.Count; i++)
+                _subTasks[i].Order = i + 1;
         }
     }
 }

@@ -382,3 +382,39 @@
 .task-scroll .unity-scroller--vertical .unity-repeat-button {
     display: none;
 }
+
+/* ── Drag and Drop ── */
+.drag-ghost {
+    position: absolute;
+    background-color: rgba(60, 100, 180, 0.85);
+    border-radius: 5px;
+    padding: 4px 10px;
+    max-width: 200px;
+}
+
+.drag-ghost-label {
+    color: #ffffff;
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.drop-indicator {
+    position: absolute;
+    height: 2px;
+    background-color: rgba(100, 170, 255, 0.9);
+    border-radius: 1px;
+}
+
+/* SubTask → merge into an existing big event (drop on row body) */
+.drop-indicator--merge {
+    background-color: rgba(70, 200, 130, 0.22);
+    border-width: 2px;
+    border-color: rgba(90, 230, 150, 0.95);
+    border-radius: 5px;
+}
+
+.drag-source-dimmed {
+    opacity: 0.3;
+}

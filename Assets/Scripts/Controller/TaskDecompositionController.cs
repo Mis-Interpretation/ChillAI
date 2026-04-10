@@ -159,6 +159,64 @@ namespace ChillAI.Controller
             _taskModel.Save();
         }
 
+        public void ReorderSubTask(string bigEventId, string subTaskId, int newIndex)
+        {
+            _taskModel.MoveSubTaskToIndex(bigEventId, subTaskId, newIndex);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskReordered));
+            _taskModel.Save();
+        }
+
+        public void ReorderBigEvent(string bigEventId, int newIndex)
+        {
+            _taskModel.MoveBigEventToIndex(bigEventId, newIndex);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.BigEventsReordered));
+            _taskModel.Save();
+        }
+
+        public string PromoteSubTaskToBigEvent(string bigEventId, string subTaskId, int insertIndex)
+        {
+            var subTask = _taskModel.DetachSubTask(bigEventId, subTaskId);
+            if (subTask == null) return null;
+            var newBigEvent = new BigEvent(subTask.Title);
+            int n = _taskModel.BigEvents.Count;
+            insertIndex = Mathf.Clamp(insertIndex, 0, n);
+            _taskModel.InsertBigEvent(insertIndex, newBigEvent);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskRemoved));
+            _signalBus.Fire(new BigEventChangedSignal(newBigEvent.Id, BigEventChangeType.Added));
+            _taskModel.Save();
+            return newBigEvent.Id;
+        }
+
+        public void MoveSubTaskToBigEvent(string fromBigEventId, string subTaskId, string targetBigEventId)
+        {
+            if (fromBigEventId == targetBigEventId) return;
+            var subTask = _taskModel.DetachSubTask(fromBigEventId, subTaskId);
+            if (subTask == null) return;
+            var target = _taskModel.GetBigEvent(targetBigEventId);
+            if (target == null) return;
+            target.InsertSubTask(target.TotalCount, subTask);
+            _signalBus.Fire(new BigEventChangedSignal(fromBigEventId, BigEventChangeType.SubTaskRemoved));
+            _signalBus.Fire(new BigEventChangedSignal(targetBigEventId, BigEventChangeType.SubTaskAdded));
+            _taskModel.Save();
+        }
+
+        public void DemoteBigEventToSubTask(string bigEventId, string targetBigEventId)
+        {
+            if (bigEventId == targetBigEventId) return;
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null) return;
+            var target = _taskModel.GetBigEvent(targetBigEventId);
+            if (target == null) return;
+
+            var title = bigEvent.Title;
+            _taskModel.RemoveBigEvent(bigEventId);
+            var subTask = new SubTask(title, target.TotalCount + 1);
+            target.AddSubTask(subTask);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
+            _signalBus.Fire(new BigEventChangedSignal(targetBigEventId, BigEventChangeType.SubTaskAdded));
+            _taskModel.Save();
+        }
+
         List<(string role, string content)> BuildHistoryTuples(AgentProfile profile)
         {
             var maxCount = profile.maxHistoryToSend;

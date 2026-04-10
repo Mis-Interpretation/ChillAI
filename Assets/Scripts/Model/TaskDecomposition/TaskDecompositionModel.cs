@@ -81,6 +81,38 @@ namespace ChillAI.Model.TaskDecomposition
                 subTask.Title = newTitle;
         }
 
+        public void MoveSubTaskToIndex(string bigEventId, string subTaskId, int newIndex)
+        {
+            var bigEvent = GetBigEvent(bigEventId);
+            bigEvent?.MoveSubTask(subTaskId, newIndex);
+        }
+
+        public SubTask DetachSubTask(string bigEventId, string subTaskId)
+        {
+            var bigEvent = GetBigEvent(bigEventId);
+            if (bigEvent == null) return null;
+            var subTask = bigEvent.SubTasks.FirstOrDefault(s => s.Id == subTaskId);
+            if (subTask == null) return null;
+            bigEvent.RemoveSubTask(subTaskId);
+            return subTask;
+        }
+
+        public void InsertBigEvent(int index, BigEvent bigEvent)
+        {
+            index = Math.Max(0, Math.Min(index, _bigEvents.Count));
+            _bigEvents.Insert(index, bigEvent);
+        }
+
+        public void MoveBigEventToIndex(string bigEventId, int newIndex)
+        {
+            var idx = _bigEvents.FindIndex(e => e.Id == bigEventId);
+            if (idx < 0) return;
+            var ev = _bigEvents[idx];
+            _bigEvents.RemoveAt(idx);
+            newIndex = Math.Max(0, Math.Min(newIndex, _bigEvents.Count));
+            _bigEvents.Insert(newIndex, ev);
+        }
+
         public void Clear()
         {
             _bigEvents.Clear();

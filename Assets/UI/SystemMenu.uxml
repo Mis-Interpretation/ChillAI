@@ -28,6 +28,10 @@
             <ui:SliderInt name="bubbles-slider" low-value="5" high-value="100" class="setting-slider"/>
             <ui:Label name="bubbles-value" class="setting-value"/>
         </ui:VisualElement>
+        <ui:VisualElement class="setting-row">
+            <ui:Label text="自动任务" class="setting-label"/>
+            <ui:Toggle name="auto-task-toggle" class="setting-toggle"/>
+        </ui:VisualElement>
     </ui:VisualElement>
     <ui:Label name="menu-btn" text="☰" class="menu-btn" style="translate: 0 -25px;"/>
 </ui:UXML>
