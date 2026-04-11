@@ -17,7 +17,7 @@ MonoBehaviour:
   windowAlpha: 0.4
   enableClickThrough: 1
   maxChatBubbles: 20
-  autoGenerateTasks: 0
+  autoGenerateTasks: 1
   taskPanelDragLongPressMs: 100
   openaiApiKey: 
   usageAutoSaveIntervalMinutes: 5
