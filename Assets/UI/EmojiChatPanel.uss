@@ -22,6 +22,11 @@
     background-color: rgba(60, 60, 60, 0.9);
 }
 
+/* Panel closed: last AI reply as toggle icon (EmojiChatPanelView toggles this class) */
+.chat-toggle-btn--last-emoji {
+    font-size: 28px;
+}
+
 /* ── Chat Panel Header ── */
 .chat-panel-header {
     flex-direction: row;

@@ -31,6 +31,11 @@ namespace ChillAI.View.EmojiChat
 
         bool _panelVisible;
 
+        /// <summary>Last AI emoji line this session; toggle shows it while the panel is closed.</summary>
+        string _lastAiEmojiForToggle;
+
+        const string DefaultToggleText = "💬";
+
         // Window drag
         WindowDragManipulator _dragManipulator;
 
@@ -74,6 +79,7 @@ namespace ChillAI.View.EmojiChat
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
             UpdateStatus();
+            RefreshToggleButtonVisual();
         }
 
         void OnDisable()
@@ -102,6 +108,8 @@ namespace ChillAI.View.EmojiChat
 
             if (_panelVisible)
                 _chatInput.Focus();
+
+            RefreshToggleButtonVisual();
         }
 
         void OnInputKeyDown(KeyDownEvent evt)
@@ -145,6 +153,24 @@ namespace ChillAI.View.EmojiChat
 
             foreach (var msg in signal.Messages)
                 AddBubble(msg, false);
+
+            if (signal.Messages.Count > 0)
+            {
+                var last = signal.Messages[signal.Messages.Count - 1]?.Trim();
+                if (!string.IsNullOrEmpty(last))
+                    _lastAiEmojiForToggle = last;
+            }
+
+            RefreshToggleButtonVisual();
+        }
+
+        void RefreshToggleButtonVisual()
+        {
+            if (_toggleBtn == null) return;
+
+            var useEmoji = !_panelVisible && !string.IsNullOrEmpty(_lastAiEmojiForToggle);
+            _toggleBtn.text = useEmoji ? _lastAiEmojiForToggle : DefaultToggleText;
+            _toggleBtn.EnableInClassList("chat-toggle-btn--last-emoji", useEmoji);
         }
 
         void AddBubble(string text, bool isUser)
