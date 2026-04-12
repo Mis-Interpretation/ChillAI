@@ -3,12 +3,12 @@
     <ui:VisualElement name="active-process-hud-root" class="active-process-hud-root" style="bottom: 4px; right: 30px;">
         <ui:Label name="active-process-hud" text="" class="active-process-hud"/>
     </ui:VisualElement>
-    <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -25px;">
+    <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -35px;">
         <ui:Button name="settings-btn" text="⚙ 设置" class="menu-item"/>
         <ui:Button name="switch-display-btn" text="🖵 切换屏幕" class="menu-item"/>
         <ui:Button name="exit-btn" text="✕ 退出" class="menu-item menu-item--danger"/>
     </ui:VisualElement>
-    <ui:VisualElement name="settings-panel" class="settings-panel hidden">
+    <ui:VisualElement name="settings-panel" class="settings-panel hidden" style="translate: 0 -35px;">
         <ui:VisualElement class="settings-header">
             <ui:Label text="设置" class="settings-title"/>
             <ui:Button name="settings-close-btn" text="✕" class="close-btn"/>
@@ -32,6 +32,10 @@
             <ui:Label text="自动任务" class="setting-label"/>
             <ui:Toggle name="auto-task-toggle" class="setting-toggle"/>
         </ui:VisualElement>
+        <ui:VisualElement class="setting-row">
+            <ui:Label text="拖拽引导" class="setting-label"/>
+            <ui:Toggle name="drag-guide-toggle" class="setting-toggle"/>
+        </ui:VisualElement>
     </ui:VisualElement>
-    <ui:Label name="menu-btn" text="☰" class="menu-btn" style="translate: 0 -25px;"/>
+    <ui:Label name="menu-btn" text="☰" class="menu-btn" style="translate: 0 -35px;"/>
 </ui:UXML>

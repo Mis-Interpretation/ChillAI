@@ -30,6 +30,9 @@ namespace ChillAI.Core.Settings
         [Tooltip("Allow task agent to auto-create tasks from chat intent")]
         public bool autoGenerateTasks = false;
 
+        [Tooltip("User already knows dragging ☰ moves the UI; skip the startup guide bubble")]
+        public bool knowsDragMenu;
+
         [Header("Task Panel")]
         [Tooltip("How long to press (ms) before drag mode starts on task rows")]
         [Range(50, 3000)]

@@ -1,0 +1,46 @@
+.text-bubble {
+    position: absolute;
+    max-width: 320px;
+    opacity: 1;
+    scale: 1 1;
+    transition-property: opacity, scale;
+    transition-duration: 220ms, 220ms;
+    transition-timing-function: ease-out, ease-out;
+}
+
+.text-bubble__body {
+    padding: 6px 12px;
+    background-color: rgba(30, 30, 30, 0.92);
+    border-radius: 10px;
+    border-width: 1px;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.text-bubble__label {
+    color: rgb(240, 240, 240);
+    font-size: 16px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+/* Downward-pointing tail: a small rotated square whose top half hides behind the body */
+.text-bubble__tail {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background-color: rgba(30, 30, 30, 0.92);
+    rotate: 45deg;
+    bottom: -5px;
+    left: 50%;
+    translate: -50% 0;
+    border-right-width: 1px;
+    border-bottom-width: 1px;
+    border-left-width: 0;
+    border-top-width: 0;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.text-bubble--hidden {
+    opacity: 0;
+    scale: 0.6 0.6;
+}

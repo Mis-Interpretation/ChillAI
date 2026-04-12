@@ -29,6 +29,9 @@ namespace ChillAI.View.Window
         /// <summary>Fires when a drag actually occurred (movement exceeded threshold, or immediate drag mode).</summary>
         public event Action DragEnded;
 
+        /// <summary>Fires exactly once per drag sequence when dragging actually starts.</summary>
+        public event Action DragStarted;
+
         public WindowDragManipulator(
             VisualElement moveTarget,
             float dragThreshold = 0f,
@@ -110,6 +113,7 @@ namespace ChillAI.View.Window
             if (_dragThreshold <= 0f)
             {
                 _isDragging = true;
+                DragStarted?.Invoke();
                 evt.StopPropagation();
             }
         }
@@ -129,6 +133,7 @@ namespace ChillAI.View.Window
                 if (panelDeltaForThreshold.sqrMagnitude < _dragThreshold * _dragThreshold)
                     return;
                 _isDragging = true;
+                DragStarted?.Invoke();
             }
 
             var mouseNow = Input.mousePosition;

@@ -27,6 +27,10 @@ namespace ChillAI.View.SystemMenu
         VisualElement _menuPopup;
         VisualElement _settingsPanel;
         WindowDragManipulator _dragManipulator;
+
+        public VisualElement MenuButton => _menuBtn;
+        public WindowDragManipulator MenuDragManipulator => _dragManipulator;
+        public AppSettings Settings => _appSettings;
         Label _processHud;
 
         // Settings controls
@@ -34,6 +38,7 @@ namespace ChillAI.View.SystemMenu
         SliderInt _fpsSlider;
         SliderInt _bubblesSlider;
         Toggle _autoTaskToggle;
+        Toggle _dragGuideToggle;
         Label _alphaValue;
         Label _fpsValue;
         Label _bubblesValue;
@@ -108,6 +113,10 @@ namespace ChillAI.View.SystemMenu
             _autoTaskToggle = root.Q<Toggle>("auto-task-toggle");
             _autoTaskToggle.value = _appSettings.autoGenerateTasks;
             _autoTaskToggle.RegisterValueChangedCallback(OnAutoTaskChanged);
+
+            _dragGuideToggle = root.Q<Toggle>("drag-guide-toggle");
+            _dragGuideToggle.value = _appSettings.knowsDragMenu;
+            _dragGuideToggle.RegisterValueChangedCallback(OnDragGuideChanged);
 
             _alphaSlider.RegisterValueChangedCallback(OnAlphaChanged);
             _fpsSlider.RegisterValueChangedCallback(OnFpsChanged);
@@ -240,6 +249,11 @@ namespace ChillAI.View.SystemMenu
         void OnAutoTaskChanged(ChangeEvent<bool> evt)
         {
             _appSettings.autoGenerateTasks = evt.newValue;
+        }
+
+        void OnDragGuideChanged(ChangeEvent<bool> evt)
+        {
+            _appSettings.knowsDragMenu = evt.newValue;
         }
 
         void OnSwitchDisplay()
