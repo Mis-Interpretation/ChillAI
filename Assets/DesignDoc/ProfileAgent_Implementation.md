@@ -60,44 +60,64 @@ Profile Agent 是一个后台运行的 AI agent，通过分析用户的聊天记
 
 ---
 
-## 两阶段更新流程
+## Per-Tier 并行更新流程
 
-### Phase 1：Triage（分诊）
+每个 tier 拥有独立的 triage + update pipeline，3 个 tier **并行**运行。
+
+### 数据配置（`ProfileTierConfig` in `ProfilePrompts.cs`）
+
+每个 tier 通过 `ProfileDataSource` flags 声明需要的数据源：
+
+| Tier | 数据源 |
+|------|--------|
+| T1 身份底色 | ChatMessages + SystemTime + AppActiveHours |
+| T2 偏好与风格 | ChatMessages + AppUsageByCategory |
+| T3 当下状态 | ChatMessages + CurrentTasks + ArchivedTasks + AppUsageDetail + SystemTime |
+
+### Phase 1：Per-Tier Triage（分诊）
 
 - **模型**：gpt-4o-mini（便宜快速）
 - **参数**：maxTokens=512, temperature=0.2
-- **输入**：新数据摘要 + 当前 profile 按 section 分组的概要
+- **3 个 triage 并行发出**，每个只接收对应 tier 的数据和 profile summary
 - **输出**：需要更新的问题 ID 列表 + 原因
 - **JSON Schema**：`{"updates": [{"id": "t3_mood", "reason": "..."}]}`
 
-分诊规则（写在 system prompt 中）：
-- 第一层问题几乎不更新，除非有明确身份变更
-- 第三层问题积极更新
-- (unanswered) 的问题有线索就标记
-- [low confidence] 的问题降低门槛
-- 每次最多标记 5 个问题
+Per-Tier 分诊规则：
+- **T1**：门槛极高，需要明确身份变更信号，每次最多标记 2 个
+- **T2**：中等门槛，从行为模式推断，每次最多标记 3 个
+- **T3**：低门槛，有线索就标记，每次最多标记 5 个
+- 所有 tier：(unanswered) 有线索就标记，[low confidence] 降低门槛
 
-### Phase 2：Focused Update（聚焦更新）
+### Phase 2：Per-Tier Focused Update（聚焦更新）
 
 - **模型**：gpt-4o（高质量）
 - **参数**：maxTokens=2048, temperature=0.5
-- **输入**：证据 + 仅 Phase 1 标记的问题（含当前答案和更新原因）
+- **只对有标记的 tier 发起 update**，并行执行
 - **输出**：更新后的答案 + confidence 分数
 - **JSON Schema**：`{"answers": [{"id": "t3_mood", "answer": "...", "confidence": 0.8}]}`
 
-**Token 成本估算**：Phase 1 ~1,100 tokens + Phase 2 ~1,000 tokens = ~2,100 tokens/次
+Per-Tier Update 侧重：
+- **T1**：需要非常明确的证据，身份信息来自直接陈述
+- **T2**：允许从行为模式推断，偏好类描述趋势而非单次行为
+- **T3**：注重时效性，描述当前状态，旧信息应替换而非追加
+
+**Token 成本估算**：3 个 Triage ~1,900 tokens + Update ~1,700 tokens（最坏） ≈ 3,600 tokens/次。典型成本约 ~2,800 tokens（T1 通常不触发 update）
 
 ---
 
 ## 数据源
 
-ProfileController 在 `BuildNewDataSummary()` 中收集以下数据发送给 AI：
+ProfileController 的 `BuildTierDataSummary()` 根据 `ProfileDataSource` flags 按需组装数据：
 
-1. **系统时间** - 当前日期时间
-2. **聊天记录** - 上次运行以来的新消息（最多 20 条），从 `IChatHistoryReader` 读取
-3. **当前任务** - 所有 BigEvent 及完成进度，从 `ITaskDecompositionReader` 读取
-4. **已完成任务** - 最近 10 条归档记录，从 `ITaskArchiveStore` 读取
-5. **App 使用时长** - 当天各进程使用时间（超过 1 分钟的），从 `IUsageTrackingReader` 读取
+| 数据源标记 | 内容 | 来源 |
+|-----------|------|------|
+| `SystemTime` | 当前日期时间 | `DateTime.Now` |
+| `ChatMessages` | 上次运行以来的用户消息（最多 20 条） | `IChatHistoryReader` |
+| `CurrentTasks` | 所有 BigEvent 及完成进度 | `ITaskDecompositionReader` |
+| `ArchivedTasks` | 最近 10 条归档记录 | `ITaskArchiveStore` |
+| `AppUsageDetail` | 当天各进程使用时间明细 | `IUsageTrackingReader` |
+| `AppUsageByCategory` | 按 SoftwareCategory 分组汇总 | `IUsageTrackingReader` + `IBehaviorMappingReader` |
+| `AppActiveHours` | 今日+近 3 天使用时长（推断作息） | `IUsageTrackingReader` |
 
 ---
 
@@ -167,7 +187,7 @@ List<ProfileSectionSnapshot>
 
 | 文件 | 改动 |
 |------|------|
-| `Core/Settings/AgentRegistry.cs` | Ids 中添加 ProfileTriage、ProfileUpdate |
+| `Core/Settings/AgentRegistry.cs` | Ids 中添加 ProfileTriageT1/T2/T3、ProfileUpdateT1/T2/T3 |
 | `Core/Settings/AppSettings.cs` | 添加 debugMode 开关 |
 | `Core/Settings/UserSettingsData.cs` | 添加 profileChatThreshold、profileTaskThreshold、profileTimeThresholdMinutes |
 | `Core/Settings/UserSettingsDefaults.cs` | 添加默认值（10/3/60）+ CreateData 映射 |
@@ -175,10 +195,7 @@ List<ProfileSectionSnapshot>
 
 ### Unity 资产
 
-| 文件 | 说明 |
-|------|------|
-| `Data/ProfileTriageAgent.asset` | AgentProfile SO（prompt 未使用，硬编码在 ProfilePrompts.cs） |
-| `Data/ProfileUpdateAgent.asset` | AgentProfile SO（prompt 未使用，硬编码在 ProfilePrompts.cs） |
+不再需要 AgentProfile SO 文件，AgentProfile 在 `ProfileController` 中根据 `ProfileTierConfig` 动态创建。
 
 ---
 
@@ -189,15 +206,17 @@ List<ProfileSectionSnapshot>
          ↓ Signal + Tick
 ProfileController 累计计数 + 计时
          ↓ 任一阈值达到
-Phase 1: Triage (gpt-4o-mini)
-    输入: 新数据摘要 + 当前 profile 概要
-    输出: ["t3_mood", "t3_projects"] 需要更新
+并行 Phase 1: Per-Tier Triage (gpt-4o-mini x3)
+    ├─ T1 Triage: 聊天 + 时间 + 活跃时段 → T1 profile
+    ├─ T2 Triage: 聊天 + App分类汇总 → T2 profile
+    └─ T3 Triage: 聊天 + 任务 + 归档 + App明细 + 时间 → T3 profile
+         ↓ 各自返回需更新的 ID 列表
+并行 Phase 2: Per-Tier Update (gpt-4o, 仅对有标记的 tier)
+    ├─ T1 Update (如有): 同上数据 + 标记的问题
+    ├─ T2 Update (如有): 同上数据 + 标记的问题
+    └─ T3 Update (如有): 同上数据 + 标记的问题
          ↓
-Phase 2: Focused Update (gpt-4o)
-    输入: 仅标记的问题 + 完整证据
-    输出: 更新后的答案 + confidence
-         ↓
-ProfileModel.SetAnswer() → RecordRunTime() → Save()
+合并写入 ProfileModel.SetAnswer() → RecordRunTime() → Save()
          ↓
 ProfileUpdatedSignal → UI 刷新
 ```

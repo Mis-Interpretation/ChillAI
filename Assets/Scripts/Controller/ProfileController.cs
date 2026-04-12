@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading.Tasks;
+using ChillAI.Core;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
+using ChillAI.Model.BehaviorMapping;
 using ChillAI.Model.ChatHistory;
 using ChillAI.Model.TaskArchive;
 using ChillAI.Model.TaskDecomposition;
@@ -17,13 +20,13 @@ namespace ChillAI.Controller
     public class ProfileController : IInitializable, IDisposable, ITickable
     {
         readonly IAIService _aiService;
-        readonly AgentRegistry _agentRegistry;
         readonly SignalBus _signalBus;
         readonly IProfileWriter _profileWriter;
         readonly IChatHistoryReader _chatHistory;
         readonly ITaskDecompositionReader _taskReader;
         readonly ITaskArchiveStore _taskArchive;
         readonly IUsageTrackingReader _usageTracking;
+        readonly IBehaviorMappingReader _behaviorMapping;
         readonly UserSettingsService _userSettings;
         readonly AppSettings _appSettings;
 
@@ -33,72 +36,36 @@ namespace ChillAI.Controller
         int _lastChatEntryCount;
         bool _isProcessing;
 
+        // Cached AgentProfiles per tier (lazy-created)
+        readonly Dictionary<string, AgentProfile> _agentProfiles = new();
+
         public ProfileController(
             IAIService aiService,
-            AgentRegistry agentRegistry,
             SignalBus signalBus,
             IProfileWriter profileWriter,
             IChatHistoryReader chatHistory,
             ITaskDecompositionReader taskReader,
             ITaskArchiveStore taskArchive,
             IUsageTrackingReader usageTracking,
+            IBehaviorMappingReader behaviorMapping,
             UserSettingsService userSettings,
             AppSettings appSettings)
         {
             _aiService = aiService;
-            _agentRegistry = agentRegistry;
             _signalBus = signalBus;
             _profileWriter = profileWriter;
             _chatHistory = chatHistory;
             _taskReader = taskReader;
             _taskArchive = taskArchive;
             _usageTracking = usageTracking;
+            _behaviorMapping = behaviorMapping;
             _userSettings = userSettings;
             _appSettings = appSettings;
         }
 
-        AgentProfile _triageProfile;
-        AgentProfile _updateProfile;
-
         public bool IsProcessing => _isProcessing;
 
-        AgentProfile TriageProfile
-        {
-            get
-            {
-                if (_triageProfile != null) return _triageProfile;
-                _triageProfile = ScriptableObject.CreateInstance<AgentProfile>();
-                _triageProfile.agentId = AgentRegistry.Ids.ProfileTriage;
-                _triageProfile.modelName = "gpt-4o-mini";
-                _triageProfile.maxTokens = 512;
-                _triageProfile.temperature = 0.2f;
-                _triageProfile.maxHistoryToSend = 0;
-                _triageProfile.systemPrompt = ProfilePrompts.TriageSystemPrompt;
-                _triageProfile.useJsonSchema = true;
-                _triageProfile.schemaName = ProfilePrompts.TriageSchemaName;
-                _triageProfile.jsonSchema = ProfilePrompts.TriageJsonSchema;
-                return _triageProfile;
-            }
-        }
-
-        AgentProfile UpdateProfile
-        {
-            get
-            {
-                if (_updateProfile != null) return _updateProfile;
-                _updateProfile = ScriptableObject.CreateInstance<AgentProfile>();
-                _updateProfile.agentId = AgentRegistry.Ids.ProfileUpdate;
-                _updateProfile.modelName = "gpt-4o";
-                _updateProfile.maxTokens = 2048;
-                _updateProfile.temperature = 0.5f;
-                _updateProfile.maxHistoryToSend = 0;
-                _updateProfile.systemPrompt = ProfilePrompts.UpdateSystemPrompt;
-                _updateProfile.useJsonSchema = true;
-                _updateProfile.schemaName = ProfilePrompts.UpdateSchemaName;
-                _updateProfile.jsonSchema = ProfilePrompts.UpdateJsonSchema;
-                return _updateProfile;
-            }
-        }
+        // ── Lifecycle ──────────────────────────────────────────────
 
         public void Initialize()
         {
@@ -109,7 +76,6 @@ namespace ChillAI.Controller
 
             _lastChatEntryCount = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat).Count;
 
-            // Seed _secondsSinceLastRun with real elapsed time since last persisted run
             if (_profileWriter.HasEverRun)
             {
                 if (DateTime.TryParse(_profileWriter.LastRunTime, out var lastRun))
@@ -120,8 +86,6 @@ namespace ChillAI.Controller
             }
             else
             {
-                // Never run before — seed with a large value so the time threshold
-                // triggers on first Tick cycle (after AI is configured)
                 _secondsSinceLastRun = float.MaxValue;
                 Debug.Log("[ChillAI] [profile] First ever run, will trigger once AI is ready.");
             }
@@ -139,7 +103,6 @@ namespace ChillAI.Controller
         {
             if (_isProcessing || !_aiService.IsConfigured) return;
 
-            // Debug hotkey: Q + E + P triggers immediate profile update
             if (_appSettings.debugMode &&
                 Input.GetKey(KeyCode.Q) && Input.GetKey(KeyCode.E) && Input.GetKeyDown(KeyCode.P))
             {
@@ -167,13 +130,13 @@ namespace ChillAI.Controller
             return false;
         }
 
-        // ── Signal Handlers ──
+        // ── Signal Handlers ────────────────────────────────────────
 
         void OnChatMessage(EmojiChatResponseSignal _) => _chatEventCount++;
         void OnTaskChanged(BigEventChangedSignal _) => _taskEventCount++;
         void OnSubTaskCompleted(SubTaskCompletionChangedSignal _) => _taskEventCount++;
 
-        // ── Two-Phase Update ──
+        // ── Per-Tier Parallel Pipeline ─────────────────────────────
 
         async void TryRunProfileUpdate()
         {
@@ -183,51 +146,68 @@ namespace ChillAI.Controller
             {
                 _isProcessing = true;
 
-                var newDataSummary = BuildNewDataSummary();
-                var profileSummary = _profileWriter.GetProfileSummary();
+                // Collect shared data once (chat messages, etc.)
+                var chatMessages = CollectNewChatMessages();
 
-                // Phase 1: Triage
-                var triageMessage = BuildTriageMessage(newDataSummary, profileSummary);
-                var triageResponse = await _aiService.ChatAsync(TriageProfile, triageMessage);
-                var triageResult = TryParse<TriageResponse>(triageResponse);
+                // Phase 1: Parallel triage for all tiers
+                var configs = ProfilePrompts.TierConfigs;
+                var triageTasks = new Task<List<TriageUpdate>>[configs.Length];
 
-                if (triageResult?.updates == null || triageResult.updates.Count == 0)
+                for (var i = 0; i < configs.Length; i++)
                 {
-                    Debug.Log("[ChillAI] [profile] Triage: no questions need updating.");
-                    ResetCounters();
+                    var config = configs[i];
+                    var dataSummary = BuildTierDataSummary(config, chatMessages);
+                    var tierSummary = _profileWriter.GetTierSummary(config.Tier);
+                    triageTasks[i] = RunTriage(config, dataSummary, tierSummary);
+                }
 
+                await Task.WhenAll(triageTasks);
+
+                // Phase 2: Parallel update for tiers that have flagged questions
+                var updateTasks = new List<Task<List<AnswerUpdate>>>();
+
+                for (var i = 0; i < configs.Length; i++)
+                {
+                    var updates = triageTasks[i].Result;
+                    if (updates == null || updates.Count == 0) continue;
+
+                    var config = configs[i];
+                    var dataSummary = BuildTierDataSummary(config, chatMessages);
+                    Debug.Log($"[ChillAI] [profile] {config.Tier}: {updates.Count} question(s) flagged for update.");
+                    updateTasks.Add(RunUpdate(config, dataSummary, updates));
+                }
+
+                if (updateTasks.Count == 0)
+                {
+                    Debug.Log("[ChillAI] [profile] Triage: no questions need updating across all tiers.");
+                    ResetCounters();
                     return;
                 }
 
-                Debug.Log($"[ChillAI] [profile] Triage: {triageResult.updates.Count} question(s) flagged for update.");
+                await Task.WhenAll(updateTasks);
 
-                // Phase 2: Focused Update
-                var updateMessage = BuildUpdateMessage(newDataSummary, triageResult.updates);
-                var updateResponse = await _aiService.ChatAsync(UpdateProfile, updateMessage);
-                var updateResult = TryParse<UpdateResponse>(updateResponse);
-
-                if (updateResult?.answers == null || updateResult.answers.Count == 0)
-                {
-                    Debug.LogWarning("[ChillAI] [profile] Update phase returned no answers.");
-                    ResetCounters();
-
-                    return;
-                }
-
-                // Apply updates
+                // Apply all updates
                 var updatedIds = new List<string>();
-                foreach (var a in updateResult.answers)
+                foreach (var task in updateTasks)
                 {
-                    if (string.IsNullOrWhiteSpace(a.id) || string.IsNullOrWhiteSpace(a.answer))
-                        continue;
-                    _profileWriter.SetAnswer(a.id, a.answer, a.confidence);
-                    updatedIds.Add(a.id);
+                    var answers = task.Result;
+                    if (answers == null) continue;
+                    foreach (var a in answers)
+                    {
+                        if (string.IsNullOrWhiteSpace(a.id) || string.IsNullOrWhiteSpace(a.answer))
+                            continue;
+                        _profileWriter.SetAnswer(a.id, a.answer, a.confidence);
+                        updatedIds.Add(a.id);
+                    }
                 }
 
                 _profileWriter.Save();
-                _signalBus.Fire(new ProfileUpdatedSignal(updatedIds));
 
-                Debug.Log($"[ChillAI] [profile] Updated {updatedIds.Count} answer(s): [{string.Join(", ", updatedIds)}]");
+                if (updatedIds.Count > 0)
+                {
+                    _signalBus.Fire(new ProfileUpdatedSignal(updatedIds));
+                    Debug.Log($"[ChillAI] [profile] Updated {updatedIds.Count} answer(s): [{string.Join(", ", updatedIds)}]");
+                }
             }
             catch (AIServiceException e)
             {
@@ -246,114 +226,26 @@ namespace ChillAI.Controller
             }
         }
 
-        void ResetCounters()
-        {
-            _chatEventCount = 0;
-            _taskEventCount = 0;
-            _secondsSinceLastRun = 0f;
-            _lastChatEntryCount = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat).Count;
-        }
-
-        // ── Message Builders ──
-
-        string BuildNewDataSummary()
+        async Task<List<TriageUpdate>> RunTriage(ProfileTierConfig config, string dataSummary, string tierSummary)
         {
             var sb = new StringBuilder();
-            sb.AppendLine($"[System Time: {DateTime.Now:yyyy-MM-dd HH:mm}]");
-            sb.AppendLine();
-
-            // Recent chat messages since last run
-            var allChat = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat);
-            var newEntries = allChat.Count > _lastChatEntryCount
-                ? allChat.Count - _lastChatEntryCount
-                : 0;
-
-            if (newEntries > 0)
-            {
-                // Only include user messages — assistant responses are emoji-only
-                // and carry no information about the user's profile
-                var startIdx = allChat.Count - newEntries;
-                var userMessages = new List<string>();
-                for (var i = startIdx; i < allChat.Count; i++)
-                {
-                    if (allChat[i].Role == "user")
-                        userMessages.Add(allChat[i].Content);
-                }
-
-                if (userMessages.Count > 0)
-                {
-                    var maxMessages = _userSettings.Data.profileMaxChatMessages > 0
-                        ? _userSettings.Data.profileMaxChatMessages
-                        : 20;
-                    var capStart = Math.Max(0, userMessages.Count - maxMessages);
-                    sb.AppendLine($"[Recent user messages ({userMessages.Count} messages):]");
-                    for (var i = capStart; i < userMessages.Count; i++)
-                        sb.AppendLine($"- {userMessages[i]}");
-                    sb.AppendLine();
-                }
-            }
-
-            // Current tasks
-            var tasks = _taskReader.BigEvents;
-            if (tasks.Count > 0)
-            {
-                sb.AppendLine("[Current tasks:]");
-                foreach (var t in tasks)
-                {
-                    var completedCount = 0;
-                    foreach (var s in t.SubTasks)
-                        if (s.IsCompleted) completedCount++;
-                    sb.AppendLine($"- \"{t.Title}\" ({completedCount}/{t.SubTasks.Count} completed)");
-                }
-                sb.AppendLine();
-            }
-
-            // Recent completed tasks from archive
-            var archive = _taskArchive.Entries;
-            if (archive.Count > 0)
-            {
-                sb.AppendLine("[Recently completed tasks:]");
-                var recentCount = Math.Min(archive.Count, 10);
-                for (var i = archive.Count - recentCount; i < archive.Count; i++)
-                    sb.AppendLine($"- {archive[i].content}");
-                sb.AppendLine();
-            }
-
-            // App usage data (today)
-            var today = DateTime.Now.ToString("yyyy-MM-dd");
-            var processes = _usageTracking.TrackedProcesses;
-            if (processes.Count > 0)
-            {
-                sb.AppendLine("[App usage today:]");
-                foreach (var proc in processes)
-                {
-                    var seconds = _usageTracking.GetUsageSeconds(proc, today);
-                    if (seconds < 60f) continue;
-                    var minutes = (int)(seconds / 60f);
-                    sb.AppendLine($"- {proc}: {minutes} min");
-                }
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
-        }
-
-        string BuildTriageMessage(string newDataSummary, string profileSummary)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine(newDataSummary);
+            sb.AppendLine(dataSummary);
             sb.AppendLine("[Current profile:]");
-            sb.AppendLine(profileSummary);
+            sb.AppendLine(tierSummary);
             sb.AppendLine("Based on the new data above, which profile question IDs need updating or answering?");
             sb.AppendLine("Return only the IDs that have clear evidence for change in the new data.");
-            return sb.ToString();
+
+            var profile = GetOrCreateAgentProfile(config.AgentIdTriage, "gpt-4o-mini", 512, 0.2f, config.TriageSystemPrompt);
+            var response = await _aiService.ChatAsync(profile, sb.ToString());
+            var result = TryParse<TriageResponse>(response);
+            return result?.updates;
         }
 
-        string BuildUpdateMessage(string newDataSummary, List<TriageUpdate> updates)
+        async Task<List<AnswerUpdate>> RunUpdate(ProfileTierConfig config, string dataSummary, List<TriageUpdate> updates)
         {
             var sb = new StringBuilder();
             sb.AppendLine("[Evidence:]");
-            sb.AppendLine(newDataSummary);
+            sb.AppendLine(dataSummary);
             sb.AppendLine("[Questions to update:]");
 
             foreach (var u in updates)
@@ -373,10 +265,240 @@ namespace ChillAI.Controller
 
             sb.AppendLine();
             sb.AppendLine("Return updated answers with confidence scores (0.0-1.0).");
+
+            var profile = GetOrCreateAgentProfile(config.AgentIdUpdate, "gpt-4o", 2048, 0.5f, config.UpdateSystemPrompt);
+            var response = await _aiService.ChatAsync(profile, sb.ToString());
+            var result = TryParse<UpdateResponse>(response);
+            return result?.answers;
+        }
+
+        void ResetCounters()
+        {
+            _chatEventCount = 0;
+            _taskEventCount = 0;
+            _secondsSinceLastRun = 0f;
+            _lastChatEntryCount = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat).Count;
+        }
+
+        // ── Data Collection ────────────────────────────────────────
+
+        /// <summary>
+        /// Collect new user chat messages since last run. Called once per update cycle,
+        /// shared across all tier data builders.
+        /// </summary>
+        List<string> CollectNewChatMessages()
+        {
+            var allChat = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat);
+            var newEntries = allChat.Count > _lastChatEntryCount
+                ? allChat.Count - _lastChatEntryCount
+                : 0;
+
+            var messages = new List<string>();
+            if (newEntries <= 0) return messages;
+
+            var startIdx = allChat.Count - newEntries;
+            for (var i = startIdx; i < allChat.Count; i++)
+            {
+                if (allChat[i].Role == "user")
+                    messages.Add(allChat[i].Content);
+            }
+
+            return messages;
+        }
+
+        /// <summary>
+        /// Build data summary for a specific tier based on its declared DataSources.
+        /// </summary>
+        string BuildTierDataSummary(ProfileTierConfig config, List<string> chatMessages)
+        {
+            var sb = new StringBuilder();
+            var sources = config.DataSources;
+
+            if (sources.HasFlag(ProfileDataSource.SystemTime))
+                AppendSystemTime(sb);
+
+            if (sources.HasFlag(ProfileDataSource.ChatMessages))
+                AppendChatMessages(sb, chatMessages);
+
+            if (sources.HasFlag(ProfileDataSource.CurrentTasks))
+                AppendCurrentTasks(sb);
+
+            if (sources.HasFlag(ProfileDataSource.ArchivedTasks))
+                AppendArchivedTasks(sb);
+
+            if (sources.HasFlag(ProfileDataSource.AppUsageDetail))
+                AppendAppUsageDetail(sb);
+
+            if (sources.HasFlag(ProfileDataSource.AppUsageByCategory))
+                AppendAppUsageByCategory(sb);
+
+            if (sources.HasFlag(ProfileDataSource.AppActiveHours))
+                AppendAppActiveHours(sb);
+
             return sb.ToString();
         }
 
-        // ── Parsing ──
+        // ── Append* Methods (data formatting blocks) ───────────────
+
+        static void AppendSystemTime(StringBuilder sb)
+        {
+            sb.AppendLine($"[System Time: {DateTime.Now:yyyy-MM-dd HH:mm}]");
+            sb.AppendLine();
+        }
+
+        void AppendChatMessages(StringBuilder sb, List<string> messages)
+        {
+            if (messages.Count == 0) return;
+
+            var maxMessages = _userSettings.Data.profileMaxChatMessages > 0
+                ? _userSettings.Data.profileMaxChatMessages
+                : 20;
+            var capStart = Math.Max(0, messages.Count - maxMessages);
+
+            sb.AppendLine($"[Recent user messages ({Math.Min(messages.Count, maxMessages)} messages):]");
+            for (var i = capStart; i < messages.Count; i++)
+                sb.AppendLine($"- {messages[i]}");
+            sb.AppendLine();
+        }
+
+        void AppendCurrentTasks(StringBuilder sb)
+        {
+            var tasks = _taskReader.BigEvents;
+            if (tasks.Count == 0) return;
+
+            sb.AppendLine("[Current tasks:]");
+            foreach (var t in tasks)
+            {
+                var completedCount = 0;
+                foreach (var s in t.SubTasks)
+                    if (s.IsCompleted) completedCount++;
+                sb.AppendLine($"- \"{t.Title}\" ({completedCount}/{t.SubTasks.Count} completed)");
+            }
+            sb.AppendLine();
+        }
+
+        void AppendArchivedTasks(StringBuilder sb)
+        {
+            var archive = _taskArchive.Entries;
+            if (archive.Count == 0) return;
+
+            sb.AppendLine("[Recently completed tasks:]");
+            var recentCount = Math.Min(archive.Count, 10);
+            for (var i = archive.Count - recentCount; i < archive.Count; i++)
+                sb.AppendLine($"- {archive[i].content}");
+            sb.AppendLine();
+        }
+
+        void AppendAppUsageDetail(StringBuilder sb)
+        {
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            var processes = _usageTracking.TrackedProcesses;
+            if (processes.Count == 0) return;
+
+            var hasAny = false;
+            var temp = new StringBuilder();
+            foreach (var proc in processes)
+            {
+                var seconds = _usageTracking.GetUsageSeconds(proc, today);
+                if (seconds < 60f) continue;
+                var minutes = (int)(seconds / 60f);
+                temp.AppendLine($"- {proc}: {minutes} min");
+                hasAny = true;
+            }
+
+            if (hasAny)
+            {
+                sb.AppendLine("[App usage today:]");
+                sb.Append(temp);
+                sb.AppendLine();
+            }
+        }
+
+        void AppendAppUsageByCategory(StringBuilder sb)
+        {
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            var processes = _usageTracking.TrackedProcesses;
+            if (processes.Count == 0) return;
+
+            // Accumulate usage by category
+            var categoryTotals = new Dictionary<SoftwareCategory, float>();
+            foreach (var proc in processes)
+            {
+                var seconds = _usageTracking.GetUsageSeconds(proc, today);
+                if (seconds < 60f) continue;
+
+                var category = _behaviorMapping.GetCategory(proc);
+                if (!categoryTotals.ContainsKey(category))
+                    categoryTotals[category] = 0f;
+                categoryTotals[category] += seconds;
+            }
+
+            if (categoryTotals.Count == 0) return;
+
+            sb.AppendLine("[App usage by category today:]");
+            foreach (var kvp in categoryTotals)
+            {
+                var minutes = (int)(kvp.Value / 60f);
+                sb.AppendLine($"- {kvp.Key}: {minutes} min");
+            }
+            sb.AppendLine();
+        }
+
+        void AppendAppActiveHours(StringBuilder sb)
+        {
+            var today = DateTime.Now.ToString("yyyy-MM-dd");
+            var totalSeconds = _usageTracking.GetTotalUsageForDate(today);
+            if (totalSeconds < 60f) return;
+
+            var totalMinutes = (int)(totalSeconds / 60f);
+            var now = DateTime.Now;
+
+            sb.AppendLine("[Active hours today:]");
+            sb.AppendLine($"- Total app usage today: {totalMinutes} min");
+            sb.AppendLine($"- Current time: {now:HH:mm}");
+
+            // Show recent days pattern for rhythm detection
+            for (var dayOffset = 1; dayOffset <= 3; dayOffset++)
+            {
+                var date = now.AddDays(-dayOffset).ToString("yyyy-MM-dd");
+                var daySeconds = _usageTracking.GetTotalUsageForDate(date);
+                if (daySeconds >= 60f)
+                {
+                    var dayMinutes = (int)(daySeconds / 60f);
+                    sb.AppendLine($"- {date}: {dayMinutes} min total usage");
+                }
+            }
+            sb.AppendLine();
+        }
+
+        // ── Agent Profile Factory ──────────────────────────────────
+
+        AgentProfile GetOrCreateAgentProfile(string agentId, string model, int maxTokens,
+            float temperature, string systemPrompt)
+        {
+            if (_agentProfiles.TryGetValue(agentId, out var existing))
+                return existing;
+
+            var profile = ScriptableObject.CreateInstance<AgentProfile>();
+            profile.agentId = agentId;
+            profile.modelName = model;
+            profile.maxTokens = maxTokens;
+            profile.temperature = temperature;
+            profile.maxHistoryToSend = 0;
+            profile.systemPrompt = systemPrompt;
+            profile.useJsonSchema = true;
+            profile.schemaName = agentId.Contains("triage")
+                ? ProfilePrompts.TriageSchemaName
+                : ProfilePrompts.UpdateSchemaName;
+            profile.jsonSchema = agentId.Contains("triage")
+                ? ProfilePrompts.TriageJsonSchema
+                : ProfilePrompts.UpdateJsonSchema;
+
+            _agentProfiles[agentId] = profile;
+            return profile;
+        }
+
+        // ── Parsing ────────────────────────────────────────────────
 
         static T TryParse<T>(string json) where T : class
         {
@@ -384,7 +506,7 @@ namespace ChillAI.Controller
             catch { return null; }
         }
 
-        // ── Response Models ──
+        // ── Response Models ────────────────────────────────────────
 
         [Serializable]
         class TriageResponse

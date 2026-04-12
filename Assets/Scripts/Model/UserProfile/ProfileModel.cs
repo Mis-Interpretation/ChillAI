@@ -78,23 +78,40 @@ namespace ChillAI.Model.UserProfile
         {
             var sb = new StringBuilder();
             foreach (var section in ProfileQuestions.Sections)
+                AppendSectionSummary(sb, section);
+            return sb.ToString();
+        }
+
+        public string GetTierSummary(ProfileTier tier)
+        {
+            var sb = new StringBuilder();
+            foreach (var section in ProfileQuestions.Sections)
             {
-                sb.AppendLine($"[{section.title}]");
-                foreach (var q in section.questions)
+                if (section.tier == tier)
                 {
-                    if (_answers.TryGetValue(q.id, out var a) && !string.IsNullOrWhiteSpace(a.answer))
-                    {
-                        var summary = a.answer.Length > 60 ? a.answer.Substring(0, 60) + "..." : a.answer;
-                        var conf = a.confidence < 0.5f ? " [low confidence]" : "";
-                        sb.AppendLine($"  {q.id} ({q.label}): {summary}{conf}");
-                    }
-                    else
-                    {
-                        sb.AppendLine($"  {q.id} ({q.label}): (unanswered)");
-                    }
+                    AppendSectionSummary(sb, section);
+                    break;
                 }
             }
             return sb.ToString();
+        }
+
+        void AppendSectionSummary(StringBuilder sb, ProfileSection section)
+        {
+            sb.AppendLine($"[{section.title}]");
+            foreach (var q in section.questions)
+            {
+                if (_answers.TryGetValue(q.id, out var a) && !string.IsNullOrWhiteSpace(a.answer))
+                {
+                    var summary = a.answer.Length > 60 ? a.answer.Substring(0, 60) + "..." : a.answer;
+                    var conf = a.confidence < 0.5f ? " [low confidence]" : "";
+                    sb.AppendLine($"  {q.id} ({q.label}): {summary}{conf}");
+                }
+                else
+                {
+                    sb.AppendLine($"  {q.id} ({q.label}): (unanswered)");
+                }
+            }
         }
 
         public string LastRunTime => _lastRunTime;

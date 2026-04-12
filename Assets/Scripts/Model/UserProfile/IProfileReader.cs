@@ -23,6 +23,11 @@ namespace ChillAI.Model.UserProfile
         string GetProfileSummary();
 
         /// <summary>
+        /// Returns a compact summary for a single tier only.
+        /// </summary>
+        string GetTierSummary(ProfileTier tier);
+
+        /// <summary>
         /// When the profile agent last ran. Null if never run.
         /// </summary>
         string LastRunTime { get; }
