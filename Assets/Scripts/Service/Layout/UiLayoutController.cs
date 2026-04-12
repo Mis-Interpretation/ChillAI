@@ -95,6 +95,27 @@ namespace ChillAI.Service.Layout
         public void UnregisterChatPanel()     => _chatPanel   = null;
         public void UnregisterTaskPanel()     => _taskPanel   = null;
 
+        // ── Column ratio ──────────────────────────────────────────────────────────
+
+        public void SetTaskColLeftRatio(float ratio)
+        {
+            EnsureLoaded();
+            _snapshot.hasTaskColLeftRatio = true;
+            _snapshot.taskColLeftRatio    = R(Mathf.Clamp01(ratio));
+        }
+
+        public bool TryGetTaskColLeftRatio(out float ratio)
+        {
+            EnsureLoaded();
+            if (_snapshot.hasTaskColLeftRatio && _snapshot.taskColLeftRatio > 0f)
+            {
+                ratio = _snapshot.taskColLeftRatio;
+                return true;
+            }
+            ratio = 0f;
+            return false;
+        }
+
         // ── Context switch ────────────────────────────────────────────────────────
 
         public void RebindToCurrentContext()
@@ -287,6 +308,10 @@ namespace ChillAI.Service.Layout
             var parent = panel.parent;
             if (parent == null) return;
 
+            // Persisted panel coordinates are root-relative. Clear any author-time
+            // translate offset (e.g. UXML "translate: 0 -25px") so it doesn't
+            // get re-applied on every launch and cause cumulative drift.
+            panel.style.translate = new StyleTranslate(new Translate(0f, 0f));
             panel.style.position = Position.Absolute;
             panel.style.bottom   = StyleKeyword.Auto;
             panel.style.right    = StyleKeyword.Auto;
@@ -340,8 +365,8 @@ namespace ChillAI.Service.Layout
             var p = el.transform.position;
 #pragma warning restore CS0618
             hasFlag = true;
-            outX = p.x;
-            outY = p.y;
+            outX = R(p.x);
+            outY = R(p.y);
         }
 
         static void CapturePanelLayout(VisualElement panel,
@@ -361,11 +386,13 @@ namespace ChillAI.Service.Layout
             // Convert world top-left to parent-local space.
             var tl = parent.WorldToLocal(new Vector2(wb.xMin, wb.yMin));
 
-            outLeft = tl.x;
-            outTop  = tl.y;
-            outW    = wb.width;
-            outH    = wb.height;
+            outLeft = R(tl.x);
+            outTop  = R(tl.y);
+            outW    = R(wb.width);
+            outH    = R(wb.height);
             hasFlag = true;
         }
+
+        static float R(float v) => (float)Math.Round(v, 3);
     }
 }

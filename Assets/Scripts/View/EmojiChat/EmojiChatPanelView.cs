@@ -85,7 +85,11 @@ namespace ChillAI.View.EmojiChat
             _resizeHandle = root.Q<VisualElement>("chat-resize-handle");
             if (_resizeHandle != null)
             {
-                _resizeManipulator = new PanelResizeManipulator(_panel, 220f, 160f, OnHudLayoutChanged);
+                _resizeManipulator = new PanelResizeManipulator(
+                    _panel,
+                    _appSettings.chatPanelMinWidth,
+                    _appSettings.chatPanelMinHeight,
+                    OnHudLayoutChanged);
                 _resizeHandle.AddManipulator(_resizeManipulator);
             }
 

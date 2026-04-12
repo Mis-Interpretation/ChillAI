@@ -12,7 +12,9 @@
                 <ui:ScrollView name="list-scroll" class="list-scroll"/>
                 <ui:Button name="add-list-btn" text="＋" class="add-list-btn"/>
             </ui:VisualElement>
-            <ui:VisualElement class="col-divider"/>
+            <ui:VisualElement name="col-divider" class="col-divider">
+                <ui:VisualElement class="col-divider-line"/>
+            </ui:VisualElement>
             <ui:VisualElement class="col-right">
                 <ui:ScrollView name="task-scroll" class="task-scroll"/>
             </ui:VisualElement>

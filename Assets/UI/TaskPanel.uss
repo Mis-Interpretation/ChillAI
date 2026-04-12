@@ -167,11 +167,29 @@
 
 /* ── Divider ── */
 .col-divider {
-    width: 1px;
-    background-color: rgba(255, 255, 255, 0.06);
-    margin-left: 6px;
-    margin-right: 6px;
+    width: 9px;
+    background-color: transparent;
     flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Thin visual line drawn as a border on the left side */
+.col-divider-line {
+    position: absolute;
+    width: 1px;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.col-divider:hover .col-divider-line {
+    background-color: rgba(120, 180, 255, 0.45);
+}
+
+.col-divider--active .col-divider-line {
+    background-color: rgba(120, 180, 255, 0.7);
 }
 
 /* ── Right column (subtasks) ── */

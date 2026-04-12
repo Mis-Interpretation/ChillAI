@@ -29,6 +29,9 @@ namespace ChillAI.View.TaskUI
         VisualElement _panel;
         Button _closeBtn;
         Label _statusLabel;
+        VisualElement _columns;
+        VisualElement _colLeft;
+        VisualElement _colDivider;
         ScrollView _listScroll;
         Button _addListBtn;
         ScrollView _taskScroll;
@@ -58,10 +61,14 @@ namespace ChillAI.View.TaskUI
         string _activeEditOriginalText;
         bool _isCommittingEdit;
 
-        // Window drag
+        // Window drag / resize / column divider
         WindowDragManipulator _dragManipulator;
         PanelResizeManipulator _resizeManipulator;
+        ColumnDividerManipulator _dividerManipulator;
         VisualElement _resizeHandle;
+
+        // One-shot callback used to restore the saved column ratio after the first layout pass.
+        EventCallback<GeometryChangedEvent> _colRatioRestoreCallback;
 
         [Inject]
         public void Construct(
@@ -86,10 +93,13 @@ namespace ChillAI.View.TaskUI
         {
             var root = GetComponent<UIDocument>().rootVisualElement;
 
-            _toggleBtn = root.Q<Button>("toggle-btn");
-            _panel = root.Q<VisualElement>("panel");
-            _closeBtn = root.Q<Button>("close-btn");
+            _toggleBtn  = root.Q<Button>("toggle-btn");
+            _panel      = root.Q<VisualElement>("panel");
+            _closeBtn   = root.Q<Button>("close-btn");
             _statusLabel = root.Q<Label>("status-label");
+            _columns    = root.Q<VisualElement>(className: "columns");
+            _colLeft    = root.Q<VisualElement>(className: "col-left");
+            _colDivider = root.Q<VisualElement>("col-divider");
             _listScroll = root.Q<ScrollView>("list-scroll");
             _addListBtn = root.Q<Button>("add-list-btn");
             _taskScroll = root.Q<ScrollView>("task-scroll");
@@ -118,8 +128,23 @@ namespace ChillAI.View.TaskUI
             _resizeHandle = root.Q<VisualElement>("task-resize-handle");
             if (_resizeHandle != null)
             {
-                _resizeManipulator = new PanelResizeManipulator(_panel, 320f, 220f, OnHudLayoutChanged);
+                _resizeManipulator = new PanelResizeManipulator(
+                    _panel,
+                    _appSettings.taskPanelMinWidth,
+                    _appSettings.taskPanelMinHeight,
+                    OnHudLayoutChanged);
                 _resizeHandle.AddManipulator(_resizeManipulator);
+            }
+
+            if (_colDivider != null)
+            {
+                _dividerManipulator = new ColumnDividerManipulator(
+                    _colLeft,
+                    _columns,
+                    () => _appSettings.taskColLeftMinRatio,
+                    () => _appSettings.taskColLeftMaxRatio,
+                    OnDividerDragEnded);
+                _colDivider.AddManipulator(_dividerManipulator);
             }
 
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
@@ -131,11 +156,29 @@ namespace ChillAI.View.TaskUI
             RebuildLeftColumn();
             RebuildRightColumn();
 
-            // Pre-warm: show the panel for one frame so UIToolkit computes layout
-            // on all children while the user hasn't opened it yet. This eliminates
-            // the ~1 s freeze caused by display:none → visible layout pass on first open.
+            // Pre-warm: make the panel visible for one layout pass so UIToolkit computes
+            // geometry for all children. This eliminates the ~1 s freeze on first open.
+            // We listen for GeometryChangedEvent on _columns (fires *after* the layout
+            // pass) to safely read resolvedStyle.width before hiding again.
+            _colRatioRestoreCallback = _ =>
+            {
+                if (_columns == null) return;
+                _columns.UnregisterCallback<GeometryChangedEvent>(_colRatioRestoreCallback);
+                _colRatioRestoreCallback = null;
+
+                float colsW = _columns.resolvedStyle.width;
+                if (colsW > 0f && _uiLayout != null && _uiLayout.TryGetTaskColLeftRatio(out float ratio) && _colLeft != null)
+                {
+                    _colLeft.style.width = Mathf.Clamp(
+                        ratio * colsW,
+                        _appSettings.taskColLeftMinRatio * colsW,
+                        _appSettings.taskColLeftMaxRatio * colsW);
+                }
+
+                _panel.AddToClassList("hidden");
+            };
+            _columns.RegisterCallback<GeometryChangedEvent>(_colRatioRestoreCallback);
             _panel.RemoveFromClassList("hidden");
-            _panel.schedule.Execute(() => _panel.AddToClassList("hidden"));
         }
 
         void OnDisable()
@@ -154,6 +197,15 @@ namespace ChillAI.View.TaskUI
 
             if (_resizeManipulator != null && _resizeHandle != null)
                 _resizeHandle.RemoveManipulator(_resizeManipulator);
+
+            if (_dividerManipulator != null && _colDivider != null)
+                _colDivider.RemoveManipulator(_dividerManipulator);
+
+            if (_colRatioRestoreCallback != null && _columns != null)
+            {
+                _columns.UnregisterCallback<GeometryChangedEvent>(_colRatioRestoreCallback);
+                _colRatioRestoreCallback = null;
+            }
 
             _uiLayout?.UnregisterTaskHudRoot();
             _uiLayout?.UnregisterTaskPanel();
@@ -205,6 +257,19 @@ namespace ChillAI.View.TaskUI
         void OnHudLayoutChanged()
         {
             _uiLayout?.RequestSave();
+        }
+
+        void OnDividerDragEnded()
+        {
+            if (_uiLayout == null || _colLeft == null || _columns == null) return;
+
+            float colsW = _columns.resolvedStyle.width;
+            if (colsW > 0f)
+            {
+                float ratio = _colLeft.resolvedStyle.width / colsW;
+                _uiLayout.SetTaskColLeftRatio(ratio);
+            }
+            _uiLayout.RequestSave();
         }
 
         void OnPanelMouseDown(MouseDownEvent evt)

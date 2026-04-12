@@ -34,6 +34,9 @@ namespace ChillAI.Core.Layout
         public float taskPanelTop;
         public float taskPanelW;
         public float taskPanelH;
+
+        public bool hasTaskColLeftRatio;
+        public float taskColLeftRatio;
     }
 
     [Serializable]
