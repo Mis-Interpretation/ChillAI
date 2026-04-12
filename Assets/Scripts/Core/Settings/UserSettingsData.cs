@@ -29,6 +29,10 @@ namespace ChillAI.Core.Settings
         public int chatPanelMinWidth;
         public int chatPanelMinHeight;
 
+        // Profile Panel
+        public int profilePanelMinWidth;
+        public int profilePanelMinHeight;
+
         // Profile Agent
         public int profileChatThreshold;
         public int profileTaskThreshold;

@@ -1,0 +1,12 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/ProfileInsightPanel.uss?fileID=7433441132597879392&amp;guid=689122f4f63d4b8a9e0e853fe820fd5f&amp;type=3#ProfileInsightPanel"/>
+    <ui:VisualElement name="profile-panel" class="profile-panel hidden" style="translate: 0 -25px; position: absolute; bottom: 84px; right: 132px; width: 360px; height: 360px; background-color: rgba(20, 20, 25, 0.92); border-radius: 12px; border-width: 1px; border-color: rgba(255, 255, 255, 0.08); padding: 12px; flex-direction: column;">
+        <ui:VisualElement class="profile-panel-header" style="flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <ui:Label text="我眼中的你" class="profile-panel-title"/>
+            <ui:Button name="profile-close-btn" text="✕" class="profile-close-btn" style="width: 22px; height: 22px; border-radius: 11px; background-color: transparent; color: rgba(255, 255, 255, 0.4); font-size: 12px; border-width: 0; -unity-text-align: middle-center;"/>
+        </ui:VisualElement>
+        <ui:Label name="profile-summary-label" class="profile-summary-label"/>
+        <ui:ScrollView name="profile-qa-scroll" class="profile-qa-scroll"/>
+        <ui:VisualElement name="profile-resize-handle" class="panel-resize-handle"/>
+    </ui:VisualElement>
+</ui:UXML>

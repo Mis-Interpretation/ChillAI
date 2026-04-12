@@ -5,6 +5,7 @@ using ChillAI.Core.Signals;
 using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using ChillAI.View.EmojiChat;
+using ChillAI.View.Profile;
 using ChillAI.View.TaskUI;
 using ChillAI.View.Window;
 using UnityEngine;
@@ -87,6 +88,7 @@ namespace ChillAI.View.SystemMenu
 
             // Menu items
             root.Q<Button>("settings-btn").clicked += OpenSettings;
+            root.Q<Button>("profile-insight-btn").clicked += OnProfileInsight;
             root.Q<Button>("switch-display-btn").clicked += OnSwitchDisplay;
             root.Q<Button>("exit-btn").clicked += OnExit;
 
@@ -143,6 +145,13 @@ namespace ChillAI.View.SystemMenu
             if (tasks.Length > 0)
             {
                 var r = tasks[0].GetComponent<UIDocument>()?.rootVisualElement;
+                if (r != null) list.Add(r);
+            }
+
+            var profiles = Object.FindObjectsByType<ProfileInsightPanelView>(FindObjectsSortMode.None);
+            if (profiles.Length > 0)
+            {
+                var r = profiles[0].GetComponent<UIDocument>()?.rootVisualElement;
                 if (r != null) list.Add(r);
             }
 
@@ -218,6 +227,12 @@ namespace ChillAI.View.SystemMenu
         void CloseSettings()
         {
             _settingsPanel.EnableInClassList("hidden", true);
+        }
+
+        void OnProfileInsight()
+        {
+            _menuPopup.EnableInClassList("hidden", true);
+            _signalBus?.Fire<ToggleProfileInsightPanelSignal>();
         }
 
         void UpdateValueLabels()

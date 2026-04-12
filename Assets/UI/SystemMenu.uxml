@@ -5,6 +5,7 @@
     </ui:VisualElement>
     <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -35px;">
         <ui:Button name="settings-btn" text="⚙ 设置" class="menu-item"/>
+        <ui:Button name="profile-insight-btn" text="👁 我眼中的你" class="menu-item"/>
         <ui:Button name="switch-display-btn" text="🖵 切换屏幕" class="menu-item"/>
         <ui:Button name="exit-btn" text="✕ 退出" class="menu-item menu-item--danger"/>
     </ui:VisualElement>

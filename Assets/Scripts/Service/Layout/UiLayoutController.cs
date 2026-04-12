@@ -30,8 +30,10 @@ namespace ChillAI.Service.Layout
         VisualElement _menuWrapper;
         VisualElement _chatRoot;
         VisualElement _taskRoot;
+        VisualElement _profileRoot;
         VisualElement _chatPanel;
         VisualElement _taskPanel;
+        VisualElement _profilePanel;
 
         float _lastSaveTime = float.MinValue;
         bool _savePending;
@@ -67,6 +69,13 @@ namespace ChillAI.Service.Layout
             ApplyTaskRoot();
         }
 
+        public void RegisterProfileHudRoot(VisualElement root)
+        {
+            _profileRoot = root;
+            EnsureLoaded();
+            ApplyProfileRoot();
+        }
+
         /// <summary>
         /// Register the chat panel. Layout is applied on the next scheduler tick
         /// so that UIElements has already computed geometry before we read it.
@@ -89,11 +98,20 @@ namespace ChillAI.Service.Layout
             panel.schedule.Execute(() => ApplyTaskPanel(panel));
         }
 
+        public void RegisterProfilePanel(VisualElement panel)
+        {
+            _profilePanel = panel;
+            EnsureLoaded();
+            panel.schedule.Execute(() => ApplyProfilePanel(panel));
+        }
+
         public void UnregisterMenuWrapper()   => _menuWrapper = null;
         public void UnregisterChatHudRoot()   => _chatRoot    = null;
         public void UnregisterTaskHudRoot()   => _taskRoot    = null;
+        public void UnregisterProfileHudRoot() => _profileRoot = null;
         public void UnregisterChatPanel()     => _chatPanel   = null;
         public void UnregisterTaskPanel()     => _taskPanel   = null;
+        public void UnregisterProfilePanel()  => _profilePanel = null;
 
         // ── Column ratio ──────────────────────────────────────────────────────────
 
@@ -126,8 +144,10 @@ namespace ChillAI.Service.Layout
             ApplyMenuWrapper();
             ApplyChatRoot();
             ApplyTaskRoot();
+            ApplyProfileRoot();
             if (_chatPanel != null) _chatPanel.schedule.Execute(() => ApplyChatPanel(_chatPanel));
             if (_taskPanel != null) _taskPanel.schedule.Execute(() => ApplyTaskPanel(_taskPanel));
+            if (_profilePanel != null) _profilePanel.schedule.Execute(() => ApplyProfilePanel(_profilePanel));
         }
 
         // ── Window bounds ─────────────────────────────────────────────────────────
@@ -154,7 +174,7 @@ namespace ChillAI.Service.Layout
             _savePending = true;
 
             // Use any live panel to post the deferred write via UIElements scheduler.
-            var scheduler = (_taskPanel ?? _chatPanel ?? _menuWrapper)?.schedule;
+            var scheduler = (_profilePanel ?? _taskPanel ?? _chatPanel ?? _menuWrapper)?.schedule;
             if (scheduler == null)
             {
                 // No panel yet — just write immediately.
@@ -284,6 +304,15 @@ namespace ChillAI.Service.Layout
 #pragma warning restore CS0618
         }
 
+        void ApplyProfileRoot()
+        {
+            if (_profileRoot == null || _snapshot == null || !_snapshot.hasProfileRoot) return;
+#pragma warning disable CS0618
+            _profileRoot.transform.position = new Vector3(
+                _snapshot.profileRootX, _snapshot.profileRootY, 0f);
+#pragma warning restore CS0618
+        }
+
         void ApplyChatPanel(VisualElement panel)
         {
             if (panel == null || _snapshot == null || !_snapshot.hasChatPanel) return;
@@ -298,6 +327,14 @@ namespace ChillAI.Service.Layout
             if (!IsValidSize(_snapshot.taskPanelW, _snapshot.taskPanelH)) return;
             PlacePanel(panel, _snapshot.taskPanelLeft, _snapshot.taskPanelTop,
                 _snapshot.taskPanelW, _snapshot.taskPanelH);
+        }
+
+        void ApplyProfilePanel(VisualElement panel)
+        {
+            if (panel == null || _snapshot == null || !_snapshot.hasProfilePanel) return;
+            if (!IsValidSize(_snapshot.profilePanelW, _snapshot.profilePanelH)) return;
+            PlacePanel(panel, _snapshot.profilePanelLeft, _snapshot.profilePanelTop,
+                _snapshot.profilePanelW, _snapshot.profilePanelH);
         }
 
         static bool IsValidSize(float w, float h)
@@ -345,6 +382,8 @@ namespace ChillAI.Service.Layout
                 ref _snapshot.chatRootX, ref _snapshot.chatRootY);
             CaptureTransform(_taskRoot, ref _snapshot.hasTaskRoot,
                 ref _snapshot.taskRootX, ref _snapshot.taskRootY);
+            CaptureTransform(_profileRoot, ref _snapshot.hasProfileRoot,
+                ref _snapshot.profileRootX, ref _snapshot.profileRootY);
 
             CapturePanelLayout(_chatPanel,
                 ref _snapshot.hasChatPanel,
@@ -355,6 +394,11 @@ namespace ChillAI.Service.Layout
                 ref _snapshot.hasTaskPanel,
                 ref _snapshot.taskPanelLeft, ref _snapshot.taskPanelTop,
                 ref _snapshot.taskPanelW,    ref _snapshot.taskPanelH);
+
+            CapturePanelLayout(_profilePanel,
+                ref _snapshot.hasProfilePanel,
+                ref _snapshot.profilePanelLeft, ref _snapshot.profilePanelTop,
+                ref _snapshot.profilePanelW,    ref _snapshot.profilePanelH);
         }
 
         static void CaptureTransform(VisualElement el,
