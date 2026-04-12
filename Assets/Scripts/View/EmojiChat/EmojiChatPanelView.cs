@@ -4,6 +4,8 @@ using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Service.Layout;
 using ChillAI.View.Window;
+using System.Collections.Generic;
+using System.Globalization;
 using UnityEngine;
 using UnityEngine.UIElements;
 using Zenject;
@@ -190,12 +192,9 @@ namespace ChillAI.View.EmojiChat
             foreach (var msg in signal.Messages)
                 AddBubble(msg, false);
 
-            if (signal.Messages.Count > 0)
-            {
-                var last = signal.Messages[signal.Messages.Count - 1]?.Trim();
-                if (!string.IsNullOrEmpty(last))
-                    _lastAiEmojiForToggle = last;
-            }
+            var toggleEmoji = TryGetToggleEmoji(signal.Messages);
+            if (!string.IsNullOrEmpty(toggleEmoji))
+                _lastAiEmojiForToggle = toggleEmoji;
 
             RefreshToggleButtonVisual();
         }
@@ -207,6 +206,104 @@ namespace ChillAI.View.EmojiChat
             var useEmoji = !_panelVisible && !string.IsNullOrEmpty(_lastAiEmojiForToggle);
             _toggleBtn.text = useEmoji ? _lastAiEmojiForToggle : DefaultToggleText;
             _toggleBtn.EnableInClassList("chat-toggle-btn--last-emoji", useEmoji);
+        }
+
+        static string TryGetToggleEmoji(IReadOnlyList<string> messages)
+        {
+            if (messages == null || messages.Count == 0)
+                return null;
+
+            for (var i = messages.Count - 1; i >= 0; i--)
+            {
+                var content = messages[i]?.Trim();
+                if (string.IsNullOrEmpty(content) || IsTaskMarker(content))
+                    continue;
+
+                var lastSentence = GetLastSentence(content);
+                var firstEmoji = ExtractFirstEmoji(lastSentence);
+                if (!string.IsNullOrEmpty(firstEmoji))
+                    return firstEmoji;
+            }
+
+            return null;
+        }
+
+        static bool IsTaskMarker(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return false;
+
+            var compact = content.Replace(" ", "").Replace("\t", "").Replace("\r", "").Replace("\n", "");
+            compact = compact.Replace("\uFE0F", "");
+            return compact == "\u270D\u270D\u270D";
+        }
+
+        static string GetLastSentence(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            var normalized = content.Replace("\r\n", "\n");
+            var lineParts = normalized.Split('\n');
+            for (var i = lineParts.Length - 1; i >= 0; i--)
+            {
+                var line = lineParts[i]?.Trim();
+                if (string.IsNullOrEmpty(line))
+                    continue;
+
+                var sentenceParts = line.Split('。', '！', '？', '!', '?', '.');
+                for (var j = sentenceParts.Length - 1; j >= 0; j--)
+                {
+                    var sentence = sentenceParts[j]?.Trim();
+                    if (!string.IsNullOrEmpty(sentence))
+                        return sentence;
+                }
+            }
+
+            return normalized.Trim();
+        }
+
+        static string ExtractFirstEmoji(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return null;
+
+            var enumerator = StringInfo.GetTextElementEnumerator(content);
+            while (enumerator.MoveNext())
+            {
+                var textElement = enumerator.GetTextElement();
+                if (IsEmojiTextElement(textElement))
+                    return textElement;
+            }
+
+            return null;
+        }
+
+        static bool IsEmojiTextElement(string textElement)
+        {
+            if (string.IsNullOrEmpty(textElement))
+                return false;
+
+            var hasEmojiBase = false;
+            for (var i = 0; i < textElement.Length; i++)
+            {
+                var codePoint = char.ConvertToUtf32(textElement, i);
+                if (char.IsSurrogatePair(textElement, i))
+                    i++;
+
+                if (IsEmojiBaseCodePoint(codePoint))
+                    hasEmojiBase = true;
+            }
+
+            return hasEmojiBase;
+        }
+
+        static bool IsEmojiBaseCodePoint(int codePoint)
+        {
+            return (codePoint >= 0x1F000 && codePoint <= 0x1FAFF) ||
+                   (codePoint >= 0x2600 && codePoint <= 0x27BF) ||
+                   (codePoint >= 0x2300 && codePoint <= 0x23FF) ||
+                   (codePoint >= 0x2B00 && codePoint <= 0x2BFF);
         }
 
         void AddBubble(string text, bool isUser)
