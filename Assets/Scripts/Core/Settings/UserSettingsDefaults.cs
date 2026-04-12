@@ -36,6 +36,16 @@ namespace ChillAI.Core.Settings
         public int chatPanelMinWidth = 220;
         public int chatPanelMinHeight = 160;
 
+        [Header("Profile Agent")]
+        [Range(1, 100)]
+        public int profileChatThreshold = 10;
+
+        [Range(1, 50)]
+        public int profileTaskThreshold = 3;
+
+        [Range(1, 1440)]
+        public int profileTimeThresholdMinutes = 60;
+
         public UserSettingsData CreateData()
         {
             return new UserSettingsData
@@ -50,6 +60,9 @@ namespace ChillAI.Core.Settings
                 taskPanelMinHeight = taskPanelMinHeight,
                 chatPanelMinWidth = chatPanelMinWidth,
                 chatPanelMinHeight = chatPanelMinHeight,
+                profileChatThreshold = profileChatThreshold,
+                profileTaskThreshold = profileTaskThreshold,
+                profileTimeThresholdMinutes = profileTimeThresholdMinutes,
             };
         }
     }

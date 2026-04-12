@@ -9,6 +9,7 @@ using ChillAI.Model.ProcessMonitor;
 using ChillAI.Model.TaskArchive;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Model.UsageTracking;
+using ChillAI.Model.UserProfile;
 using ChillAI.Service.AI;
 using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
@@ -40,6 +41,7 @@ namespace ChillAI.Installers
             Container.DeclareSignal<SubTaskCompletionChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<TaskAddedViaChatSignal>().OptionalSubscriber();
             Container.DeclareSignal<DisplaySwitchedSignal>().OptionalSubscriber();
+            Container.DeclareSignal<ProfileUpdatedSignal>().OptionalSubscriber();
 
             // ScriptableObject settings (injected as instances)
             Container.BindInstance(appSettings);
@@ -70,6 +72,8 @@ namespace ChillAI.Installers
                 .To<UsageTrackingModel>().AsSingle();
             Container.Bind(typeof(IChatHistoryReader), typeof(IChatHistoryWriter))
                 .To<ChatHistoryModel>().AsSingle();
+            Container.Bind(typeof(IProfileReader), typeof(IProfileWriter))
+                .To<ProfileModel>().AsSingle();
 
             // Services
             Container.Bind<IWindowService>()
@@ -84,6 +88,7 @@ namespace ChillAI.Installers
             Container.Bind<TaskDecompositionController>().AsSingle();
             Container.Bind<EmojiChatController>().AsSingle();
             Container.BindInterfacesAndSelfTo<UsageTrackingController>().AsSingle();
+            Container.BindInterfacesAndSelfTo<ProfileController>().AsSingle();
             Container.Bind<DisplaySwitchController>().AsSingle();
         }
     }

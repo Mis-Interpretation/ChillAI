@@ -27,6 +27,10 @@ namespace ChillAI.Core.Settings
         [Tooltip("Built-in API key for testing distribution. Takes priority over config.json when not empty.")]
         public string openaiApiKey = "";
 
+        [Header("Debug")]
+        [Tooltip("Enable debug mode: allows hotkey triggers and extra logging")]
+        public bool debugMode;
+
         [Header("Usage Tracking")]
         [Tooltip("Auto-save interval in minutes to prevent crash data loss")]
         [Range(1f, 60f)]
