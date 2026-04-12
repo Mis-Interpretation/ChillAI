@@ -185,6 +185,37 @@
     flex-grow: 1;
 }
 
+.big-task-archive-row {
+    flex-direction: row;
+    justify-content: flex-end;
+    margin-bottom: 6px;
+    padding-right: 2px;
+}
+
+.big-task-complete-btn {
+    height: 26px;
+    min-width: 52px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 5px;
+    background-color: rgba(60, 120, 80, 0.35);
+    color: rgba(220, 245, 230, 0.95);
+    font-size: 12px;
+    border-width: 1px;
+    border-color: rgba(120, 200, 140, 0.35);
+}
+
+.big-task-complete-btn:hover:enabled {
+    background-color: rgba(70, 150, 95, 0.5);
+    border-color: rgba(140, 220, 160, 0.55);
+}
+
+.big-task-complete-btn:disabled {
+    background-color: rgba(40, 40, 45, 0.5);
+    color: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.06);
+}
+
 /* ── Subtask Item ── */
 .sub-task-item {
     flex-direction: row;

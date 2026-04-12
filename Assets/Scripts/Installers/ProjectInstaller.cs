@@ -6,6 +6,7 @@ using ChillAI.Model.BehaviorMapping;
 using ChillAI.Model.ChatHistory;
 using ChillAI.Model.Expression;
 using ChillAI.Model.ProcessMonitor;
+using ChillAI.Model.TaskArchive;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Model.UsageTracking;
 using ChillAI.Service.AI;
@@ -58,6 +59,8 @@ namespace ChillAI.Installers
                 .To<ExpressionStateModel>().AsSingle();
             Container.Bind(typeof(ITaskDecompositionReader), typeof(ITaskDecompositionWriter))
                 .To<TaskDecompositionModel>().AsSingle();
+            Container.Bind<ITaskArchiveStore>()
+                .To<TaskArchiveModel>().AsSingle();
             Container.Bind(typeof(IUsageTrackingReader), typeof(IUsageTrackingWriter))
                 .To<UsageTrackingModel>().AsSingle();
             Container.Bind(typeof(IChatHistoryReader), typeof(IChatHistoryWriter))

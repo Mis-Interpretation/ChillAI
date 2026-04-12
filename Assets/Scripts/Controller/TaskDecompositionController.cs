@@ -4,6 +4,7 @@ using System.Linq;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Model.ChatHistory;
+using ChillAI.Model.TaskArchive;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Service.AI;
 using UnityEngine;
@@ -15,6 +16,7 @@ namespace ChillAI.Controller
     {
         readonly IAIService _aiService;
         readonly ITaskDecompositionWriter _taskModel;
+        readonly ITaskArchiveStore _taskArchive;
         readonly AgentRegistry _agentRegistry;
         readonly SignalBus _signalBus;
         readonly IChatHistoryWriter _chatHistory;
@@ -22,17 +24,20 @@ namespace ChillAI.Controller
         public TaskDecompositionController(
             IAIService aiService,
             ITaskDecompositionWriter taskModel,
+            ITaskArchiveStore taskArchive,
             AgentRegistry agentRegistry,
             SignalBus signalBus,
             IChatHistoryWriter chatHistory)
         {
             _aiService = aiService;
             _taskModel = taskModel;
+            _taskArchive = taskArchive;
             _agentRegistry = agentRegistry;
             _signalBus = signalBus;
             _chatHistory = chatHistory;
 
             _taskModel.Load();
+            _taskArchive.Load();
         }
 
         public bool IsAIConfigured => _aiService.IsConfigured;
@@ -133,9 +138,37 @@ namespace ChillAI.Controller
 
         public void DeleteSubTask(string bigEventId, string subTaskId)
         {
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            var subTask = bigEvent?.SubTasks.FirstOrDefault(s => s.Id == subTaskId);
+            if (subTask != null && subTask.IsCompleted)
+            {
+                _taskArchive.AppendEntry(bigEventId, subTask.Title, TaskArchiveKinds.SubTask);
+                _taskArchive.Save();
+            }
+
             _taskModel.RemoveSubTask(bigEventId, subTaskId);
             _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.SubTaskRemoved));
             _taskModel.Save();
+        }
+
+        /// <summary>
+        /// When every subtask is done: archive the big task title and each subtask line, then remove the list.
+        /// </summary>
+        public bool TryArchiveAndCompleteBigEvent(string bigEventId)
+        {
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null || !bigEvent.IsReadyForCompletedBigEventArchive)
+                return false;
+
+            _taskArchive.AppendEntry(bigEvent.Id, bigEvent.Title, TaskArchiveKinds.BigEvent);
+            foreach (var st in bigEvent.SubTasks)
+                _taskArchive.AppendEntry(bigEvent.Id, st.Title, TaskArchiveKinds.SubTask);
+
+            _taskModel.RemoveBigEvent(bigEventId);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
+            _taskModel.Save();
+            _taskArchive.Save();
+            return true;
         }
 
         public void UpdateBigEventTitle(string bigEventId, string newTitle)

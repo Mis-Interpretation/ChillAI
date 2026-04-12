@@ -368,6 +368,21 @@ namespace ChillAI.View.TaskUI
                 _taskScroll.Add(error);
             }
 
+            var completeRow = new VisualElement();
+            completeRow.AddToClassList("big-task-archive-row");
+            var completeBtn = new Button { text = "完成" };
+            completeBtn.AddToClassList("big-task-complete-btn");
+            completeBtn.SetEnabled(selected.IsReadyForCompletedBigEventArchive);
+            var completeBigId = selected.Id;
+            completeBtn.clicked += () =>
+            {
+                CommitEditMode();
+                RemoveInlineInput();
+                _controller.TryArchiveAndCompleteBigEvent(completeBigId);
+            };
+            completeRow.Add(completeBtn);
+            _taskScroll.Add(completeRow);
+
             // Subtasks
             foreach (var subTask in selected.SubTasks)
             {
@@ -657,6 +672,10 @@ namespace ChillAI.View.TaskUI
                 var label = subtaskRow.Q<Label>(className: "sub-task-title");
                 label?.EnableInClassList("sub-task-title--completed", signal.IsCompleted);
             }
+
+            var completeBtn = _taskScroll.Q<Button>(className: "big-task-complete-btn");
+            var big = _taskReader.GetBigEvent(_selectedBigEventId);
+            completeBtn?.SetEnabled(big != null && big.IsReadyForCompletedBigEventArchive);
         }
 
         void OnTaskAddedViaChat(TaskAddedViaChatSignal signal)

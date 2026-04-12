@@ -17,6 +17,10 @@ namespace ChillAI.Model.TaskDecomposition
         public int CompletedCount => _subTasks.Count(s => s.IsCompleted);
         public int TotalCount => _subTasks.Count;
 
+        /// <summary>At least one subtask, and every subtask is checked complete (for bulk archive).</summary>
+        public bool IsReadyForCompletedBigEventArchive =>
+            TotalCount > 0 && CompletedCount == TotalCount;
+
         public BigEvent(string title)
         {
             Id = Guid.NewGuid().ToString();
