@@ -273,7 +273,7 @@ namespace ChillAI.View.EmojiChat
             {
                 var textElement = enumerator.GetTextElement();
                 if (IsEmojiTextElement(textElement))
-                    return textElement;
+                    return NormalizeEmojiForToggle(textElement);
             }
 
             return null;
@@ -304,6 +304,21 @@ namespace ChillAI.View.EmojiChat
                    (codePoint >= 0x2600 && codePoint <= 0x27BF) ||
                    (codePoint >= 0x2300 && codePoint <= 0x23FF) ||
                    (codePoint >= 0x2B00 && codePoint <= 0x2BFF);
+        }
+
+        static string NormalizeEmojiForToggle(string emoji)
+        {
+            if (string.IsNullOrEmpty(emoji))
+                return emoji;
+
+            // UI Toolkit may render gender/role ZWJ emoji as split glyphs.
+            // Fallback to the leading base emoji to keep toggle icon stable.
+            var zwjIndex = emoji.IndexOf('\u200D');
+            if (zwjIndex <= 0)
+                return emoji;
+
+            var basePart = emoji.Substring(0, zwjIndex).Trim();
+            return IsEmojiTextElement(basePart) ? basePart : emoji;
         }
 
         void AddBubble(string text, bool isUser)
