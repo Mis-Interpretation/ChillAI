@@ -87,6 +87,74 @@ namespace ChillAI.View.Window
             return RuntimePanelUtils.ScreenToPanel(panel, b) - RuntimePanelUtils.ScreenToPanel(panel, a);
         }
 
+        static Vector3 ClampTransformPositionToPanel(
+            VisualElement element,
+            Vector3 desiredPosition,
+            VisualElement clampReference)
+        {
+            var root = element?.panel?.visualTree;
+            if (root == null) return desiredPosition;
+
+            var viewport = root.worldBound;
+            if (viewport.width <= 0f || viewport.height <= 0f)
+                return desiredPosition;
+
+#pragma warning disable CS0618
+            var current = element.transform.position;
+#pragma warning restore CS0618
+
+            var dx = desiredPosition.x - current.x;
+            var dy = desiredPosition.y - current.y;
+
+            // Fullscreen wrappers (menu HUD roots) should not be constrained by their own bounds,
+            // otherwise any movement is immediately snapped back. In that case clamp by drag handle.
+            var basisBounds = element.worldBound;
+            bool isBasisValid = basisBounds.width > 0f && basisBounds.height > 0f;
+            bool basisIsFullscreenLike = isBasisValid &&
+                                         basisBounds.width >= viewport.width - 0.5f &&
+                                         basisBounds.height >= viewport.height - 0.5f;
+
+            if (!isBasisValid || basisIsFullscreenLike)
+            {
+                if (clampReference != null && clampReference.panel == element.panel)
+                {
+                    var refBounds = clampReference.worldBound;
+                    if (refBounds.width > 0f && refBounds.height > 0f)
+                    {
+                        basisBounds = refBounds;
+                        isBasisValid = true;
+                    }
+                }
+
+                if (!isBasisValid)
+                    return desiredPosition;
+            }
+
+            var moved = new Rect(basisBounds.x + dx, basisBounds.y + dy, basisBounds.width, basisBounds.height);
+
+            float adjustX;
+            if (moved.width > viewport.width)
+                adjustX = viewport.xMin - moved.xMin;
+            else if (moved.xMin < viewport.xMin)
+                adjustX = viewport.xMin - moved.xMin;
+            else if (moved.xMax > viewport.xMax)
+                adjustX = viewport.xMax - moved.xMax;
+            else
+                adjustX = 0f;
+
+            float adjustY;
+            if (moved.height > viewport.height)
+                adjustY = viewport.yMin - moved.yMin;
+            else if (moved.yMin < viewport.yMin)
+                adjustY = viewport.yMin - moved.yMin;
+            else if (moved.yMax > viewport.yMax)
+                adjustY = viewport.yMax - moved.yMax;
+            else
+                adjustY = 0f;
+
+            return new Vector3(desiredPosition.x + adjustX, desiredPosition.y + adjustY, desiredPosition.z);
+        }
+
         void OnPointerDown(PointerDownEvent evt)
         {
             if (evt.button != 0) return;
@@ -151,8 +219,10 @@ namespace ChillAI.View.Window
                 if (t.panel == null) continue;
 
                 var s = _startPositions[i];
+                var desired = new Vector3(s.x + dShared.x, s.y + dShared.y, s.z);
+                var clamped = ClampTransformPositionToPanel(t, desired, target);
 #pragma warning disable CS0618
-                t.transform.position = new Vector3(s.x + dShared.x, s.y + dShared.y, s.z);
+                t.transform.position = clamped;
 #pragma warning restore CS0618
             }
         }
