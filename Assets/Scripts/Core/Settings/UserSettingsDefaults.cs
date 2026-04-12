@@ -46,6 +46,9 @@ namespace ChillAI.Core.Settings
         [Range(1, 1440)]
         public int profileTimeThresholdMinutes = 60;
 
+        [Range(5, 100)]
+        public int profileMaxChatMessages = 20;
+
         public UserSettingsData CreateData()
         {
             return new UserSettingsData
@@ -63,6 +66,7 @@ namespace ChillAI.Core.Settings
                 profileChatThreshold = profileChatThreshold,
                 profileTaskThreshold = profileTaskThreshold,
                 profileTimeThresholdMinutes = profileTimeThresholdMinutes,
+                profileMaxChatMessages = profileMaxChatMessages,
             };
         }
     }

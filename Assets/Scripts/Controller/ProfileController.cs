@@ -270,12 +270,27 @@ namespace ChillAI.Controller
 
             if (newEntries > 0)
             {
+                // Only include user messages — assistant responses are emoji-only
+                // and carry no information about the user's profile
                 var startIdx = allChat.Count - newEntries;
-                sb.AppendLine($"[Recent chat ({newEntries} new messages):]");
-                var capStart = Math.Max(startIdx, allChat.Count - 20);
-                for (var i = capStart; i < allChat.Count; i++)
-                    sb.AppendLine($"- {allChat[i].Role}: {allChat[i].Content}");
-                sb.AppendLine();
+                var userMessages = new List<string>();
+                for (var i = startIdx; i < allChat.Count; i++)
+                {
+                    if (allChat[i].Role == "user")
+                        userMessages.Add(allChat[i].Content);
+                }
+
+                if (userMessages.Count > 0)
+                {
+                    var maxMessages = _userSettings.Data.profileMaxChatMessages > 0
+                        ? _userSettings.Data.profileMaxChatMessages
+                        : 20;
+                    var capStart = Math.Max(0, userMessages.Count - maxMessages);
+                    sb.AppendLine($"[Recent user messages ({userMessages.Count} messages):]");
+                    for (var i = capStart; i < userMessages.Count; i++)
+                        sb.AppendLine($"- {userMessages[i]}");
+                    sb.AppendLine();
+                }
             }
 
             // Current tasks
