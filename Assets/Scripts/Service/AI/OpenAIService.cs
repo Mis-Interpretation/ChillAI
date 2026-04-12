@@ -12,6 +12,14 @@ namespace ChillAI.Service.AI
 {
     public class OpenAIService : IAIService
     {
+        const string ErrorNotConfigured = "AI_ERR_NOT_CONFIGURED";
+        const string ErrorAuth = "AI_ERR_AUTH";
+        const string ErrorRateLimit = "AI_ERR_RATE_LIMIT";
+        const string ErrorServer = "AI_ERR_SERVER";
+        const string ErrorTimeout = "AI_ERR_TIMEOUT";
+        const string ErrorNetwork = "AI_ERR_NETWORK";
+        const string ErrorUnknown = "AI_ERR_UNKNOWN";
+
         readonly IConfigReader _configReader;
         readonly AppSettings _appSettings;
 
@@ -58,7 +66,7 @@ namespace ChillAI.Service.AI
             }
             catch (InvalidOperationException)
             {
-                throw new AIServiceException("API Key not configured. Edit config.json to add your key.");
+                throw new AIServiceException(ErrorNotConfigured);
             }
 
             // Build message list
@@ -105,24 +113,44 @@ namespace ChillAI.Service.AI
             catch (System.Net.Http.HttpRequestException e) when (e.Message.Contains("401"))
             {
                 _client = null;
-                throw new AIServiceException("Invalid API Key. Please check config.json.");
+                Debug.LogWarning("[ChillAI] [ai] request failed: auth");
+                throw new AIServiceException(ErrorAuth);
             }
             catch (System.Net.Http.HttpRequestException e) when (e.Message.Contains("429"))
             {
-                throw new AIServiceException("Rate limited. Please wait a moment and try again.");
+                Debug.LogWarning("[ChillAI] [ai] request failed: rate_limit");
+                throw new AIServiceException(ErrorRateLimit);
             }
             catch (System.Net.Http.HttpRequestException e) when (e.Message.Contains("500") || e.Message.Contains("503"))
             {
-                throw new AIServiceException("OpenAI server error. Please try again later.");
+                Debug.LogWarning("[ChillAI] [ai] request failed: server_unavailable");
+                throw new AIServiceException(ErrorServer);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException e)
             {
-                throw new AIServiceException("Request timed out. Check your network connection.");
+                Debug.LogWarning($"[ChillAI] [ai] request failed: timeout ({e.GetType().Name})");
+                throw new AIServiceException(ErrorTimeout);
             }
             catch (System.Net.Http.HttpRequestException e)
             {
-                throw new AIServiceException($"Network error: {e.Message}");
+                Debug.LogWarning($"[ChillAI] [ai] request failed: network ({ShortenForLog(e.Message)})");
+                throw new AIServiceException(ErrorNetwork);
             }
+            catch (Exception e)
+            {
+                Debug.LogError($"[ChillAI] [ai] request failed: unexpected ({e.GetType().Name})");
+                throw new AIServiceException(ErrorUnknown, e);
+            }
+        }
+
+        static string ShortenForLog(string message)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+                return "no_message";
+
+            const int maxLength = 120;
+            var compact = message.Replace('\n', ' ').Replace('\r', ' ').Trim();
+            return compact.Length <= maxLength ? compact : compact.Substring(0, maxLength) + "...";
         }
     }
 }

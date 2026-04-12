@@ -153,6 +153,25 @@
     white-space: normal;
 }
 
+.chat-status-label--hint {
+    color: rgba(255, 210, 120, 0.95);
+    background-color: rgba(255, 210, 120, 0.08);
+    border-width: 1px;
+    border-color: rgba(255, 210, 120, 0.22);
+    border-radius: 8px;
+    padding: 6px 8px;
+}
+
+.chat-status-label--error {
+    color: rgba(255, 225, 225, 0.97);
+    background-color: rgba(255, 106, 106, 0.18);
+    border-width: 1px;
+    border-color: rgba(255, 126, 126, 0.4);
+    border-radius: 8px;
+    padding: 6px 8px;
+    margin-bottom: 6px;
+}
+
 .chat-loading-label {
     color: rgba(150, 200, 255, 0.8);
     font-size: 16px;

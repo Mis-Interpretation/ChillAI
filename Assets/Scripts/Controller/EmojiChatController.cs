@@ -114,18 +114,33 @@ namespace ChillAI.Controller
             }
             catch (AIServiceException e)
             {
-                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, e.Message));
-                Debug.LogWarning($"[ChillAI] [emoji-chat] {e.Message}");
+                var friendlyMessage = BuildFriendlyErrorMessage(e.Message);
+                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, friendlyMessage));
+                Debug.LogWarning($"[ChillAI] [emoji-chat] request failed: {e.Message}");
             }
             catch (Exception e)
             {
-                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, $"Unexpected: {e.Message}"));
-                Debug.LogError($"[ChillAI] [emoji-chat] {e.Message}");
+                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, BuildFriendlyErrorMessage("AI_ERR_UNKNOWN")));
+                Debug.LogError($"[ChillAI] [emoji-chat] unexpected error: {e.GetType().Name}");
             }
             finally
             {
                 _isProcessing = false;
             }
+        }
+
+        static string BuildFriendlyErrorMessage(string errorCode)
+        {
+            return errorCode switch
+            {
+                "AI_ERR_NOT_CONFIGURED" => "🌀❌API🔑",
+                "AI_ERR_AUTH" => "🌀🚫API🔑",
+                "AI_ERR_RATE_LIMIT" => "🌀⏳⏳",
+                "AI_ERR_SERVER" => "🌀❌☁️☁️",
+                "AI_ERR_TIMEOUT" => "🌀📶🐢🐢🐢",
+                "AI_ERR_NETWORK" => "🌀❌🌐🌐",
+                _ => "🌀😿😿😿"
+            };
         }
 
         public void ClearHistory()

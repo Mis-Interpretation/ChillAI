@@ -4,6 +4,7 @@ using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Service.Layout;
 using ChillAI.View.Window;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
@@ -37,11 +38,14 @@ namespace ChillAI.View.EmojiChat
         string _lastAiEmojiForToggle;
 
         const string DefaultToggleText = "💬";
+        const float ErrorDedupWindowSeconds = 3f;
 
         // Window drag
         WindowDragManipulator _dragManipulator;
         PanelResizeManipulator _resizeManipulator;
         VisualElement _resizeHandle;
+        string _lastErrorMessage;
+        float _lastErrorShownAt = -100f;
 
         [Inject]
         public void Construct(
@@ -182,12 +186,14 @@ namespace ChillAI.View.EmojiChat
         {
             if (signal.IsError)
             {
-                _statusLabel.text = signal.ErrorMessage;
-                _statusLabel.style.color = new Color(1f, 0.5f, 0.3f);
+                if (ShouldSuppressDuplicateError(signal.ErrorMessage))
+                    return;
+
+                SetStatusText(signal.ErrorMessage, isError: true);
                 return;
             }
 
-            _statusLabel.text = "";
+            SetStatusText(string.Empty, isError: false);
 
             foreach (var msg in signal.Messages)
                 AddBubble(msg, false);
@@ -197,6 +203,28 @@ namespace ChillAI.View.EmojiChat
                 _lastAiEmojiForToggle = toggleEmoji;
 
             RefreshToggleButtonVisual();
+        }
+
+        bool ShouldSuppressDuplicateError(string message)
+        {
+            var normalized = message?.Trim() ?? string.Empty;
+            var now = Time.unscaledTime;
+            var isDuplicate = string.Equals(_lastErrorMessage, normalized, StringComparison.Ordinal);
+            if (!isDuplicate || now - _lastErrorShownAt > ErrorDedupWindowSeconds)
+            {
+                _lastErrorMessage = normalized;
+                _lastErrorShownAt = now;
+                return false;
+            }
+
+            return true;
+        }
+
+        void SetStatusText(string message, bool isError)
+        {
+            _statusLabel.text = message ?? string.Empty;
+            _statusLabel.EnableInClassList("chat-status-label--error", isError && !string.IsNullOrEmpty(message));
+            _statusLabel.EnableInClassList("chat-status-label--hint", !isError && !string.IsNullOrEmpty(message));
         }
 
         void RefreshToggleButtonVisual()
@@ -351,12 +379,11 @@ namespace ChillAI.View.EmojiChat
         {
             if (!_controller.IsAIConfigured)
             {
-                _statusLabel.text = $"Set API Key in:\n{_configReader.ConfigFilePath}";
-                _statusLabel.style.color = new Color(1f, 0.7f, 0.3f);
+                SetStatusText($"Set API Key in:\n{_configReader.ConfigFilePath}", isError: false);
             }
             else
             {
-                _statusLabel.text = "";
+                SetStatusText(string.Empty, isError: false);
             }
         }
     }

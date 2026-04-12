@@ -13,11 +13,9 @@ MonoBehaviour:
   m_Name: AppSettings
   m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.AppSettings
   processScanInterval: 10
-  targetFrameRate: 30
   windowAlpha: 0.4
   enableClickThrough: 1
-  maxChatBubbles: 20
-  autoGenerateTasks: 1
   taskPanelDragLongPressMs: 100
   openaiApiKey: 
+  debugMode: 1
   usageAutoSaveIntervalMinutes: 5
