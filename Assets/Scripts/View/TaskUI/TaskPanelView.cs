@@ -4,6 +4,7 @@ using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Model.TaskDecomposition;
+using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using ChillAI.View.Window;
 using UnityEngine;
@@ -21,6 +22,7 @@ namespace ChillAI.View.TaskUI
         IConfigReader _configReader;
         IWindowService _windowService;
         AppSettings _appSettings;
+        UiLayoutController _uiLayout;
 
         // UI Elements
         Button _toggleBtn;
@@ -58,6 +60,8 @@ namespace ChillAI.View.TaskUI
 
         // Window drag
         WindowDragManipulator _dragManipulator;
+        PanelResizeManipulator _resizeManipulator;
+        VisualElement _resizeHandle;
 
         [Inject]
         public void Construct(
@@ -66,7 +70,8 @@ namespace ChillAI.View.TaskUI
             ITaskDecompositionReader taskReader,
             IConfigReader configReader,
             IWindowService windowService,
-            AppSettings appSettings)
+            AppSettings appSettings,
+            UiLayoutController uiLayout)
         {
             _signalBus = signalBus;
             _controller = controller;
@@ -74,6 +79,7 @@ namespace ChillAI.View.TaskUI
             _configReader = configReader;
             _windowService = windowService;
             _appSettings = appSettings;
+            _uiLayout = uiLayout;
         }
 
         void OnEnable()
@@ -87,6 +93,10 @@ namespace ChillAI.View.TaskUI
             _listScroll = root.Q<ScrollView>("list-scroll");
             _addListBtn = root.Q<Button>("add-list-btn");
             _taskScroll = root.Q<ScrollView>("task-scroll");
+
+            _uiLayout.RegisterTaskHudRoot(root);
+            _uiLayout.RegisterTaskPanel(_panel);
+            _panelVisible = !_panel.ClassListContains("hidden");
 
             // Create badge overlay on toggle button
             _badge = new Label("+1");
@@ -103,6 +113,14 @@ namespace ChillAI.View.TaskUI
             var header = root.Q<VisualElement>(className: "panel-header");
             _dragManipulator = new WindowDragManipulator(_panel);
             header.AddManipulator(_dragManipulator);
+            _dragManipulator.DragEnded += OnHudLayoutChanged;
+
+            _resizeHandle = root.Q<VisualElement>("task-resize-handle");
+            if (_resizeHandle != null)
+            {
+                _resizeManipulator = new PanelResizeManipulator(_panel, 320f, 220f, OnHudLayoutChanged);
+                _resizeHandle.AddManipulator(_resizeManipulator);
+            }
 
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
@@ -112,6 +130,12 @@ namespace ChillAI.View.TaskUI
             AutoSelectFirst();
             RebuildLeftColumn();
             RebuildRightColumn();
+
+            // Pre-warm: show the panel for one frame so UIToolkit computes layout
+            // on all children while the user hasn't opened it yet. This eliminates
+            // the ~1 s freeze caused by display:none → visible layout pass on first open.
+            _panel.RemoveFromClassList("hidden");
+            _panel.schedule.Execute(() => _panel.AddToClassList("hidden"));
         }
 
         void OnDisable()
@@ -122,7 +146,17 @@ namespace ChillAI.View.TaskUI
             _panel.UnregisterCallback<MouseDownEvent>(OnPanelMouseDown);
 
             var header = _panel.Q<VisualElement>(className: "panel-header");
-            header?.RemoveManipulator(_dragManipulator);
+            if (_dragManipulator != null)
+            {
+                header?.RemoveManipulator(_dragManipulator);
+                _dragManipulator.DragEnded -= OnHudLayoutChanged;
+            }
+
+            if (_resizeManipulator != null && _resizeHandle != null)
+                _resizeHandle.RemoveManipulator(_resizeManipulator);
+
+            _uiLayout?.UnregisterTaskHudRoot();
+            _uiLayout?.UnregisterTaskPanel();
 
             _signalBus?.TryUnsubscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
@@ -134,21 +168,43 @@ namespace ChillAI.View.TaskUI
         void OnToggle()
         {
             _panelVisible = !_panelVisible;
-            _panel.EnableInClassList("hidden", !_panelVisible);
 
             if (_panelVisible)
             {
                 _badge.AddToClassList("hidden");
                 _pendingBadgeCount = 0;
                 _badgeHideSchedule?.Pause();
+
+                // Show a loading emoji this frame, then reveal the panel next frame.
+                // Even after pre-warm, subsequent re-opens can still stall slightly;
+                // the emoji gives immediate visual feedback before the layout pass.
+                _toggleBtn.text = "⌛";
+                _toggleBtn.schedule.Execute(() =>
+                {
+                    _panel.RemoveFromClassList("hidden");
+                    _toggleBtn.text = "Todo";
+                });
             }
+            else
+            {
+                _panel.AddToClassList("hidden");
+            }
+
+            _uiLayout?.RequestSave();
         }
 
         void OnClose()
         {
             CommitEditMode();
             _panelVisible = false;
-            _panel.EnableInClassList("hidden", true);
+            _panel.AddToClassList("hidden");
+            _toggleBtn.text = "Todo";
+            _uiLayout?.RequestSave();
+        }
+
+        void OnHudLayoutChanged()
+        {
+            _uiLayout?.RequestSave();
         }
 
         void OnPanelMouseDown(MouseDownEvent evt)

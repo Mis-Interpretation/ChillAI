@@ -9,6 +9,7 @@ using ChillAI.Model.ProcessMonitor;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Model.UsageTracking;
 using ChillAI.Service.AI;
+using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using UnityEngine;
 using Zenject;
@@ -65,6 +66,7 @@ namespace ChillAI.Installers
             // Services
             Container.Bind<IWindowService>()
                 .To<Win32WindowService>().AsSingle();
+            Container.Bind<UiLayoutController>().AsSingle();
             Container.Bind<IAIService>()
                 .To<OpenAIService>().AsSingle();
 

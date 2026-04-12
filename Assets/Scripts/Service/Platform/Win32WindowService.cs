@@ -127,6 +127,51 @@ namespace ChillAI.Service.Platform
                 Win32Interop.SWP_NOSIZE | Win32Interop.SWP_NOZORDER | Win32Interop.SWP_NOACTIVATE);
         }
 
+        public (int x, int y, int w, int h) GetWindowBounds()
+        {
+            var hwnd = Hwnd;
+            if (hwnd == IntPtr.Zero) return (0, 0, Screen.width, Screen.height);
+            Win32Interop.GetWindowRect(hwnd, out var rect);
+            int w = rect.Right - rect.Left;
+            int h = rect.Bottom - rect.Top;
+            return (rect.Left, rect.Top, w, h);
+        }
+
+        public void SetWindowBounds(int x, int y, int w, int h)
+        {
+            var hwnd = Hwnd;
+            if (hwnd == IntPtr.Zero) return;
+            w = Math.Max(w, 320);
+            h = Math.Max(h, 240);
+            Win32Interop.SetWindowPos(hwnd, IntPtr.Zero, x, y, w, h,
+                Win32Interop.SWP_NOZORDER | Win32Interop.SWP_NOACTIVATE);
+        }
+
+        public string GetUiLayoutContextId()
+        {
+#if UNITY_EDITOR
+            return $"editor|{Screen.width}x{Screen.height}|{(int)Screen.orientation}";
+#else
+            var hwnd = Hwnd;
+            if (hwnd == IntPtr.Zero)
+                return $"fallback|{Screen.width}x{Screen.height}|{(int)Screen.orientation}";
+
+            var hMonitor = Win32Interop.MonitorFromWindow(hwnd, Win32Interop.MONITOR_DEFAULTTONEAREST);
+            var info = new Win32Interop.MONITORINFOEX();
+            info.cbSize = Marshal.SizeOf<Win32Interop.MONITORINFOEX>();
+            if (!Win32Interop.GetMonitorInfo(hMonitor, ref info))
+                return $"fallback|{Screen.width}x{Screen.height}|{(int)Screen.orientation}";
+
+            int workW = info.rcWork.Right - info.rcWork.Left;
+            int workH = info.rcWork.Bottom - info.rcWork.Top;
+            string dev = string.IsNullOrEmpty(info.szDevice)
+                ? "unknown"
+                : info.szDevice.TrimEnd('\0').Replace("\\", "/");
+
+            return $"v1|{dev}|work{workW}x{workH}|client{Screen.width}x{Screen.height}|{(int)Screen.orientation}";
+#endif
+        }
+
         public (int x, int y) GetCursorScreenPosition()
         {
             Win32Interop.GetCursorPos(out var point);
@@ -280,6 +325,20 @@ namespace ChillAI.Service.Platform
         public void MoveToDisplay(int displayIndex)
         {
             Debug.LogWarning("[ChillAI] MoveToDisplay is only supported on Windows.");
+        }
+
+        public (int x, int y, int w, int h) GetWindowBounds()
+        {
+            return (0, 0, Screen.width, Screen.height);
+        }
+
+        public void SetWindowBounds(int x, int y, int w, int h)
+        {
+        }
+
+        public string GetUiLayoutContextId()
+        {
+            return $"generic|{Screen.width}x{Screen.height}|{(int)Screen.orientation}";
         }
 #endif
     }

@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ChillAI.Controller;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
+using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using ChillAI.View.EmojiChat;
 using ChillAI.View.TaskUI;
@@ -19,6 +20,7 @@ namespace ChillAI.View.SystemMenu
         [Inject] AppSettings _appSettings;
         [Inject] DisplaySwitchController _displaySwitchController;
         [Inject] SignalBus _signalBus;
+        [Inject] UiLayoutController _uiLayout;
 
         VisualElement _wrapper;
         VisualElement _menuBtn;
@@ -56,6 +58,8 @@ namespace ChillAI.View.SystemMenu
                 _wrapper.Add(root[0]);
             root.Add(_wrapper);
 
+            _uiLayout.RegisterMenuWrapper(_wrapper);
+
             _menuBtn = root.Q("menu-btn");
             _menuPopup = root.Q<VisualElement>("menu-popup");
             _settingsPanel = root.Q<VisualElement>("settings-panel");
@@ -72,6 +76,7 @@ namespace ChillAI.View.SystemMenu
                 dragThreshold: 5f,
                 alsoMove: companions.ToArray());
             _dragManipulator.OnClicked += ToggleMenu;
+            _dragManipulator.DragEnded += OnHudLayoutChanged;
             _menuBtn.AddManipulator(_dragManipulator);
 
             // Menu items
@@ -84,6 +89,7 @@ namespace ChillAI.View.SystemMenu
 
             var settingsHeader = root.Q<VisualElement>(className: "settings-header");
             _settingsDragManipulator = new WindowDragManipulator(_settingsPanel);
+            _settingsDragManipulator.DragEnded += OnHudLayoutChanged;
             settingsHeader.AddManipulator(_settingsDragManipulator);
 
             // Settings sliders
@@ -139,11 +145,17 @@ namespace ChillAI.View.SystemMenu
             {
                 _menuBtn?.RemoveManipulator(_dragManipulator);
                 _dragManipulator.OnClicked -= ToggleMenu;
+                _dragManipulator.DragEnded -= OnHudLayoutChanged;
             }
 
             var settingsHeader = _settingsPanel?.Q<VisualElement>(className: "settings-header");
             if (_settingsDragManipulator != null)
+            {
+                _settingsDragManipulator.DragEnded -= OnHudLayoutChanged;
                 settingsHeader?.RemoveManipulator(_settingsDragManipulator);
+            }
+
+            _uiLayout?.UnregisterMenuWrapper();
 
             var root = GetComponent<UIDocument>()?.rootVisualElement;
             root?.UnregisterCallback<PointerDownEvent>(OnRootPointerDown);
@@ -235,7 +247,14 @@ namespace ChillAI.View.SystemMenu
             _menuPopup.EnableInClassList("hidden", true);
 #if !UNITY_EDITOR
             _displaySwitchController.CycleToNextDisplay();
+            var root = GetComponent<UIDocument>().rootVisualElement;
+            root.schedule.Execute(() => _uiLayout.RebindToCurrentContext()).StartingIn(48);
 #endif
+        }
+
+        void OnHudLayoutChanged()
+        {
+            _uiLayout?.RequestSave();
         }
 
         void OnExit()

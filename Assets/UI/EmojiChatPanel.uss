@@ -87,7 +87,7 @@
 }
 
 .chat-messages .unity-scroller--vertical {
-    width: 4px;
+    width: 2px;
 }
 
 .chat-messages .unity-scroller--vertical .unity-base-slider__tracker {
@@ -96,14 +96,14 @@
 }
 
 .chat-messages .unity-scroller--vertical .unity-base-slider__dragger {
-    width: 4px;
-    border-radius: 2px;
-    background-color: rgba(255, 255, 255, 0.12);
+    width: 2px;
+    border-radius: 1px;
+    background-color: rgba(255, 255, 255, 0.18);
     border-width: 0;
 }
 
 .chat-messages .unity-scroller--vertical .unity-base-slider__dragger:hover {
-    background-color: rgba(255, 255, 255, 0.25);
+    background-color: rgba(255, 255, 255, 0.35);
 }
 
 /* ── Bubble Row ── */
@@ -204,4 +204,19 @@
 
 .chat-send-btn:hover {
     background-color: rgba(100, 160, 255, 0.85);
+}
+
+/* ── Resize handle (top-left) ── */
+.panel-resize-handle {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.panel-resize-handle:hover {
+    background-color: rgba(120, 180, 255, 0.55);
 }

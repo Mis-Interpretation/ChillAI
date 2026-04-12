@@ -17,5 +17,6 @@
                 <ui:ScrollView name="task-scroll" class="task-scroll"/>
             </ui:VisualElement>
         </ui:VisualElement>
+        <ui:VisualElement name="task-resize-handle" class="panel-resize-handle"/>
     </ui:VisualElement>
 </ui:UXML>

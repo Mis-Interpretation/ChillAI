@@ -1,5 +1,6 @@
 using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
+using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -12,6 +13,7 @@ namespace ChillAI.View.Window
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
         [Inject] IConfigReader _configReader;
+        [Inject] UiLayoutController _uiLayout;
 
 #if !UNITY_EDITOR
         bool _clickThroughActive;
@@ -32,6 +34,7 @@ namespace ChillAI.View.Window
 
             _windowService.MakeTransparent(alpha);
             _windowService.SetAlwaysOnTop(true);
+            _uiLayout.ApplyGameWindowIfSaved();
 
             if (_appSettings.enableClickThrough)
             {
@@ -67,5 +70,10 @@ namespace ChillAI.View.Window
             }
         }
 #endif
+
+        void OnApplicationQuit()
+        {
+            _uiLayout?.SaveNow();
+        }
     }
 }

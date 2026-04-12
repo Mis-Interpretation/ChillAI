@@ -362,7 +362,7 @@
 /* ── Scrollbar (both columns) ── */
 .list-scroll .unity-scroller--vertical,
 .task-scroll .unity-scroller--vertical {
-    width: 3px;
+    width: 2px;
 }
 
 .list-scroll .unity-scroller--vertical .unity-base-slider__tracker,
@@ -373,8 +373,9 @@
 
 .list-scroll .unity-scroller--vertical .unity-base-slider__dragger,
 .task-scroll .unity-scroller--vertical .unity-base-slider__dragger {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 2px;
+    width: 2px;
+    background-color: rgba(255, 255, 255, 0.18);
+    border-radius: 1px;
     border-width: 0;
 }
 
@@ -417,4 +418,19 @@
 
 .drag-source-dimmed {
     opacity: 0.3;
+}
+
+/* ── Resize handle (top-left) ── */
+.panel-resize-handle {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.panel-resize-handle:hover {
+    background-color: rgba(120, 180, 255, 0.55);
 }

@@ -26,6 +26,9 @@ namespace ChillAI.View.Window
         /// <summary>Fires when pointer is released without exceeding the drag threshold.</summary>
         public event Action OnClicked;
 
+        /// <summary>Fires when a drag actually occurred (movement exceeded threshold, or immediate drag mode).</summary>
+        public event Action DragEnded;
+
         public WindowDragManipulator(
             VisualElement moveTarget,
             float dragThreshold = 0f,
@@ -158,7 +161,9 @@ namespace ChillAI.View.Window
             _isDragging = false;
             target.ReleasePointer(evt.pointerId);
 
-            if (!wasDrag)
+            if (wasDrag)
+                DragEnded?.Invoke();
+            else
                 OnClicked?.Invoke();
         }
     }

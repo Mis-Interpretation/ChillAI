@@ -2,7 +2,7 @@ using ChillAI.Controller;
 using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
-using ChillAI.Service.Platform;
+using ChillAI.Service.Layout;
 using ChillAI.View.Window;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -17,7 +17,7 @@ namespace ChillAI.View.EmojiChat
         EmojiChatController _controller;
         IConfigReader _configReader;
         AppSettings _appSettings;
-        IWindowService _windowService;
+        UiLayoutController _uiLayout;
 
         // UI elements
         Button _toggleBtn;
@@ -38,6 +38,8 @@ namespace ChillAI.View.EmojiChat
 
         // Window drag
         WindowDragManipulator _dragManipulator;
+        PanelResizeManipulator _resizeManipulator;
+        VisualElement _resizeHandle;
 
         [Inject]
         public void Construct(
@@ -45,13 +47,13 @@ namespace ChillAI.View.EmojiChat
             EmojiChatController controller,
             IConfigReader configReader,
             AppSettings appSettings,
-            IWindowService windowService)
+            UiLayoutController uiLayout)
         {
             _signalBus = signalBus;
             _controller = controller;
             _configReader = configReader;
             _appSettings = appSettings;
-            _windowService = windowService;
+            _uiLayout = uiLayout;
         }
 
         void OnEnable()
@@ -67,6 +69,10 @@ namespace ChillAI.View.EmojiChat
             _statusLabel = root.Q<Label>("chat-status-label");
             _loadingLabel = root.Q<Label>("chat-loading-label");
 
+            _uiLayout.RegisterChatHudRoot(root);
+            _uiLayout.RegisterChatPanel(_panel);
+            _panelVisible = !_panel.ClassListContains("hidden");
+
             _toggleBtn.clicked += OnToggle;
             _closeBtn.clicked += OnToggle;
             _sendBtn.clicked += OnSubmit;
@@ -74,6 +80,15 @@ namespace ChillAI.View.EmojiChat
             var header = root.Q<VisualElement>(className: "chat-panel-header");
             _dragManipulator = new WindowDragManipulator(_panel);
             header.AddManipulator(_dragManipulator);
+            _dragManipulator.DragEnded += OnHudLayoutChanged;
+
+            _resizeHandle = root.Q<VisualElement>("chat-resize-handle");
+            if (_resizeHandle != null)
+            {
+                _resizeManipulator = new PanelResizeManipulator(_panel, 220f, 160f, OnHudLayoutChanged);
+                _resizeHandle.AddManipulator(_resizeManipulator);
+            }
+
             _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
@@ -89,8 +104,19 @@ namespace ChillAI.View.EmojiChat
             _sendBtn.clicked -= OnSubmit;
 
             var header = _panel.Q<VisualElement>(className: "chat-panel-header");
-            header?.RemoveManipulator(_dragManipulator);
+            if (_dragManipulator != null)
+            {
+                header?.RemoveManipulator(_dragManipulator);
+                _dragManipulator.DragEnded -= OnHudLayoutChanged;
+            }
+
+            if (_resizeManipulator != null && _resizeHandle != null)
+                _resizeHandle.RemoveManipulator(_resizeManipulator);
+
             _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
+
+            _uiLayout?.UnregisterChatHudRoot();
+            _uiLayout?.UnregisterChatPanel();
 
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiResponse);
         }
@@ -110,6 +136,12 @@ namespace ChillAI.View.EmojiChat
                 _chatInput.Focus();
 
             RefreshToggleButtonVisual();
+            _uiLayout?.RequestSave();
+        }
+
+        void OnHudLayoutChanged()
+        {
+            _uiLayout?.RequestSave();
         }
 
         void OnInputKeyDown(KeyDownEvent evt)
