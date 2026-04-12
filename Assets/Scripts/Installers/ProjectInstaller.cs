@@ -21,6 +21,7 @@ namespace ChillAI.Installers
     {
         [Header("Settings")]
         [SerializeField] AppSettings appSettings;
+        [SerializeField] UserSettingsDefaults userSettingsDefaults;
         [SerializeField] ExpressionMappingData expressionMappingData;
         [SerializeField] BehaviorMappingData behaviorMappingData;
 
@@ -42,9 +43,13 @@ namespace ChillAI.Installers
 
             // ScriptableObject settings (injected as instances)
             Container.BindInstance(appSettings);
+            Container.BindInstance(userSettingsDefaults);
             Container.BindInstance(expressionMappingData);
             Container.BindInstance(behaviorMappingData);
             Container.BindInstance(agentRegistry);
+
+            // Persistent user settings (JSON-backed)
+            Container.Bind<UserSettingsService>().AsSingle().NonLazy();
 
             // Config
             Container.Bind(typeof(IConfigReader), typeof(IConfigWriter))

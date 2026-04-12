@@ -12,6 +12,7 @@ namespace ChillAI.View.Window
     {
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
+        [Inject] UserSettingsService _userSettings;
         [Inject] IConfigReader _configReader;
         [Inject] UiLayoutController _uiLayout;
 
@@ -22,7 +23,7 @@ namespace ChillAI.View.Window
 
         void Start()
         {
-            Application.targetFrameRate = _appSettings.targetFrameRate;
+            Application.targetFrameRate = _userSettings.Data.targetFrameRate;
             Application.runInBackground = true;
 
 #if UNITY_EDITOR
@@ -73,6 +74,7 @@ namespace ChillAI.View.Window
 
         void OnApplicationQuit()
         {
+            _userSettings?.Save();
             _uiLayout?.SaveNow();
         }
     }

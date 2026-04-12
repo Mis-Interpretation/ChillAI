@@ -10,7 +10,7 @@ namespace ChillAI.View.UserGuide
     /// <summary>
     /// On app start, spawns a text bubble above the menu button hinting at drag interaction.
     /// The bubble only dismisses when the user actually drags the menu button (not on click).
-    /// Skips entirely when <see cref="AppSettings.knowsDragMenu"/> is already true.
+    /// Skips entirely when <see cref="UserSettingsData.knowsDragMenu"/> is already true.
     /// Self-bootstraps via RuntimeInitializeOnLoadMethod — no scene file changes needed.
     /// </summary>
     public class DragMenuButtonGuide : MonoBehaviour
@@ -27,7 +27,7 @@ namespace ChillAI.View.UserGuide
 
         TextBubble _bubble;
         WindowDragManipulator _manipulator;
-        AppSettings _settings;
+        UserSettingsService _userSettings;
 
         IEnumerator Start()
         {
@@ -36,7 +36,8 @@ namespace ChillAI.View.UserGuide
             while (timeout > 0f)
             {
                 sysMenu = FindFirstObjectByType<SystemMenuView>();
-                if (sysMenu != null && sysMenu.MenuButton != null && sysMenu.MenuDragManipulator != null)
+                if (sysMenu != null && sysMenu.MenuButton != null
+                    && sysMenu.MenuDragManipulator != null && sysMenu.UserSettings != null)
                     break;
                 timeout -= Time.deltaTime;
                 yield return null;
@@ -45,10 +46,9 @@ namespace ChillAI.View.UserGuide
             if (sysMenu == null || sysMenu.MenuButton == null)
                 yield break;
 
-            _settings = sysMenu.Settings;
+            _userSettings = sysMenu.UserSettings;
 
-            // Already knows — skip guide entirely
-            if (_settings != null && _settings.knowsDragMenu)
+            if (_userSettings.Data.knowsDragMenu)
             {
                 Destroy(gameObject);
                 yield break;
@@ -66,9 +66,11 @@ namespace ChillAI.View.UserGuide
             _manipulator.DragStarted -= OnMenuDragStarted;
             _manipulator = null;
 
-            // Mark as learned
-            if (_settings != null)
-                _settings.knowsDragMenu = true;
+            if (_userSettings != null)
+            {
+                _userSettings.Data.knowsDragMenu = true;
+                _userSettings.Save();
+            }
 
             _bubble?.Dismiss();
             _bubble = null;

@@ -19,7 +19,7 @@ namespace ChillAI.Controller
         readonly ITaskDecompositionReader _taskReader;
         readonly TaskDecompositionController _taskController;
         readonly IChatHistoryWriter _chatHistory;
-        readonly AppSettings _appSettings;
+        readonly UserSettingsService _userSettings;
 
         AgentProfile _taskRouterProfile;
         bool _isProcessing;
@@ -31,7 +31,7 @@ namespace ChillAI.Controller
             ITaskDecompositionReader taskReader,
             TaskDecompositionController taskController,
             IChatHistoryWriter chatHistory,
-            AppSettings appSettings)
+            UserSettingsService userSettings)
         {
             _aiService = aiService;
             _agentRegistry = agentRegistry;
@@ -39,7 +39,7 @@ namespace ChillAI.Controller
             _taskReader = taskReader;
             _taskController = taskController;
             _chatHistory = chatHistory;
-            _appSettings = appSettings;
+            _userSettings = userSettings;
 
             _chatHistory.RegisterPersistentAgent(AgentRegistry.Ids.EmojiChat);
         }
@@ -109,7 +109,7 @@ namespace ChillAI.Controller
                 _signalBus.Fire(new EmojiChatResponseSignal(userMessage, parsed.messages));
 
                 // If task intent detected, route to task agent in background
-                if (_appSettings.autoGenerateTasks && !string.IsNullOrWhiteSpace(parsed.task_intent))
+                if (_userSettings.Data.autoGenerateTasks && !string.IsNullOrWhiteSpace(parsed.task_intent))
                     HandleTaskIntent(parsed.task_intent);
             }
             catch (AIServiceException e)

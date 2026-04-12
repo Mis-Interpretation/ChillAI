@@ -18,7 +18,7 @@ namespace ChillAI.View.EmojiChat
         SignalBus _signalBus;
         EmojiChatController _controller;
         IConfigReader _configReader;
-        AppSettings _appSettings;
+        UserSettingsService _userSettings;
         UiLayoutController _uiLayout;
 
         // UI elements
@@ -48,13 +48,13 @@ namespace ChillAI.View.EmojiChat
             SignalBus signalBus,
             EmojiChatController controller,
             IConfigReader configReader,
-            AppSettings appSettings,
+            UserSettingsService userSettings,
             UiLayoutController uiLayout)
         {
             _signalBus = signalBus;
             _controller = controller;
             _configReader = configReader;
-            _appSettings = appSettings;
+            _userSettings = userSettings;
             _uiLayout = uiLayout;
         }
 
@@ -89,8 +89,8 @@ namespace ChillAI.View.EmojiChat
             {
                 _resizeManipulator = new PanelResizeManipulator(
                     _panel,
-                    _appSettings.chatPanelMinWidth,
-                    _appSettings.chatPanelMinHeight,
+                    _userSettings.Data.chatPanelMinWidth,
+                    _userSettings.Data.chatPanelMinHeight,
                     OnHudLayoutChanged);
                 _resizeHandle.AddManipulator(_resizeManipulator);
             }
@@ -335,7 +335,7 @@ namespace ChillAI.View.EmojiChat
             _chatMessages.Add(row);
 
             // Enforce max visible bubbles
-            while (_chatMessages.contentContainer.childCount > _appSettings.maxChatBubbles)
+            while (_chatMessages.contentContainer.childCount > _userSettings.Data.maxChatBubbles)
                 _chatMessages.contentContainer.RemoveAt(0);
 
             // Auto-scroll to bottom after layout recalculates

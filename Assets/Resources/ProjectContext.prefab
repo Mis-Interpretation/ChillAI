@@ -75,6 +75,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChillAI.Installers.ProjectInstaller
   appSettings: {fileID: 11400000, guid: dabe674eb8f8955498632b49775529c5, type: 2}
+  userSettingsDefaults: {fileID: 11400000, guid: 346c8d352aca1064baa426865a3133f8, type: 2}
   expressionMappingData: {fileID: 11400000, guid: 80742a1d8d474ea4a855e163258a37f6, type: 2}
   behaviorMappingData: {fileID: 11400000, guid: f3bdc02893859ef4ab73e9eee66c7bf1, type: 2}
   agentRegistry: {fileID: 11400000, guid: 04b76cd8df323da499cea7ea2d750d74, type: 2}

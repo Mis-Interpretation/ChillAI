@@ -22,6 +22,7 @@ namespace ChillAI.View.TaskUI
         IConfigReader _configReader;
         IWindowService _windowService;
         AppSettings _appSettings;
+        UserSettingsService _userSettings;
         UiLayoutController _uiLayout;
 
         // UI Elements
@@ -78,6 +79,7 @@ namespace ChillAI.View.TaskUI
             IConfigReader configReader,
             IWindowService windowService,
             AppSettings appSettings,
+            UserSettingsService userSettings,
             UiLayoutController uiLayout)
         {
             _signalBus = signalBus;
@@ -86,6 +88,7 @@ namespace ChillAI.View.TaskUI
             _configReader = configReader;
             _windowService = windowService;
             _appSettings = appSettings;
+            _userSettings = userSettings;
             _uiLayout = uiLayout;
         }
 
@@ -130,8 +133,8 @@ namespace ChillAI.View.TaskUI
             {
                 _resizeManipulator = new PanelResizeManipulator(
                     _panel,
-                    _appSettings.taskPanelMinWidth,
-                    _appSettings.taskPanelMinHeight,
+                    _userSettings.Data.taskPanelMinWidth,
+                    _userSettings.Data.taskPanelMinHeight,
                     OnHudLayoutChanged);
                 _resizeHandle.AddManipulator(_resizeManipulator);
             }
@@ -141,8 +144,8 @@ namespace ChillAI.View.TaskUI
                 _dividerManipulator = new ColumnDividerManipulator(
                     _colLeft,
                     _columns,
-                    () => _appSettings.taskColLeftMinRatio,
-                    () => _appSettings.taskColLeftMaxRatio,
+                    () => _userSettings.Data.taskColLeftMinRatio,
+                    () => _userSettings.Data.taskColLeftMaxRatio,
                     OnDividerDragEnded);
                 _colDivider.AddManipulator(_dividerManipulator);
             }
@@ -171,8 +174,8 @@ namespace ChillAI.View.TaskUI
                 {
                     _colLeft.style.width = Mathf.Clamp(
                         ratio * colsW,
-                        _appSettings.taskColLeftMinRatio * colsW,
-                        _appSettings.taskColLeftMaxRatio * colsW);
+                        _userSettings.Data.taskColLeftMinRatio * colsW,
+                        _userSettings.Data.taskColLeftMaxRatio * colsW);
                 }
 
                 _panel.AddToClassList("hidden");

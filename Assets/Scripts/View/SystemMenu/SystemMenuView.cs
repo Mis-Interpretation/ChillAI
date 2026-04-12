@@ -18,6 +18,7 @@ namespace ChillAI.View.SystemMenu
     {
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
+        [Inject] UserSettingsService _userSettings;
         [Inject] DisplaySwitchController _displaySwitchController;
         [Inject] SignalBus _signalBus;
         [Inject] UiLayoutController _uiLayout;
@@ -30,7 +31,7 @@ namespace ChillAI.View.SystemMenu
 
         public VisualElement MenuButton => _menuBtn;
         public WindowDragManipulator MenuDragManipulator => _dragManipulator;
-        public AppSettings Settings => _appSettings;
+        public UserSettingsService UserSettings => _userSettings;
         Label _processHud;
 
         // Settings controls
@@ -98,6 +99,8 @@ namespace ChillAI.View.SystemMenu
             settingsHeader.AddManipulator(_settingsDragManipulator);
 
             // Settings sliders
+            var data = _userSettings.Data;
+
             _alphaSlider = root.Q<Slider>("alpha-slider");
             _fpsSlider = root.Q<SliderInt>("fps-slider");
             _bubblesSlider = root.Q<SliderInt>("bubbles-slider");
@@ -106,16 +109,16 @@ namespace ChillAI.View.SystemMenu
             _bubblesValue = root.Q<Label>("bubbles-value");
 
             _alphaSlider.value = _appSettings.windowAlpha;
-            _fpsSlider.value = _appSettings.targetFrameRate;
-            _bubblesSlider.value = _appSettings.maxChatBubbles;
+            _fpsSlider.value = data.targetFrameRate;
+            _bubblesSlider.value = data.maxChatBubbles;
             UpdateValueLabels();
 
             _autoTaskToggle = root.Q<Toggle>("auto-task-toggle");
-            _autoTaskToggle.value = _appSettings.autoGenerateTasks;
+            _autoTaskToggle.value = data.autoGenerateTasks;
             _autoTaskToggle.RegisterValueChangedCallback(OnAutoTaskChanged);
 
             _dragGuideToggle = root.Q<Toggle>("drag-guide-toggle");
-            _dragGuideToggle.value = _appSettings.knowsDragMenu;
+            _dragGuideToggle.value = data.knowsDragMenu;
             _dragGuideToggle.RegisterValueChangedCallback(OnDragGuideChanged);
 
             _alphaSlider.RegisterValueChangedCallback(OnAlphaChanged);
@@ -235,25 +238,29 @@ namespace ChillAI.View.SystemMenu
 
         void OnFpsChanged(ChangeEvent<int> evt)
         {
-            _appSettings.targetFrameRate = evt.newValue;
+            _userSettings.Data.targetFrameRate = evt.newValue;
             _fpsValue.text = $"{evt.newValue}";
             Application.targetFrameRate = evt.newValue;
+            _userSettings.Save();
         }
 
         void OnBubblesChanged(ChangeEvent<int> evt)
         {
-            _appSettings.maxChatBubbles = evt.newValue;
+            _userSettings.Data.maxChatBubbles = evt.newValue;
             _bubblesValue.text = $"{evt.newValue}";
+            _userSettings.Save();
         }
 
         void OnAutoTaskChanged(ChangeEvent<bool> evt)
         {
-            _appSettings.autoGenerateTasks = evt.newValue;
+            _userSettings.Data.autoGenerateTasks = evt.newValue;
+            _userSettings.Save();
         }
 
         void OnDragGuideChanged(ChangeEvent<bool> evt)
         {
-            _appSettings.knowsDragMenu = evt.newValue;
+            _userSettings.Data.knowsDragMenu = evt.newValue;
+            _userSettings.Save();
         }
 
         void OnSwitchDisplay()
