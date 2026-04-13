@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ChillAI.Core;
 using ChillAI.Core.Settings;
+using ChillAI.Core.Settings.QuestActions;
 using ChillAI.Core.Signals;
 using ChillAI.Model.BehaviorMapping;
 using ChillAI.Model.ChatHistory;
@@ -17,7 +18,7 @@ using Zenject;
 
 namespace ChillAI.Controller
 {
-    public class ProfileController : IInitializable, IDisposable, ITickable
+    public class ProfileController : IInitializable, IDisposable, ITickable, IProfileAgentRunner
     {
         readonly IAIService _aiService;
         readonly SignalBus _signalBus;
@@ -72,6 +73,7 @@ namespace ChillAI.Controller
             _signalBus.Subscribe<EmojiChatResponseSignal>(OnChatMessage);
             _signalBus.Subscribe<BigEventChangedSignal>(OnTaskChanged);
             _signalBus.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompleted);
+            _signalBus.Subscribe<TriggerProfileAgentRequestedSignal>(OnTriggerProfileAgentRequested);
             Application.quitting += OnQuitting;
 
             _lastChatEntryCount = _chatHistory.GetHistory(AgentRegistry.Ids.EmojiChat).Count;
@@ -96,6 +98,7 @@ namespace ChillAI.Controller
             _signalBus.TryUnsubscribe<EmojiChatResponseSignal>(OnChatMessage);
             _signalBus.TryUnsubscribe<BigEventChangedSignal>(OnTaskChanged);
             _signalBus.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompleted);
+            _signalBus.TryUnsubscribe<TriggerProfileAgentRequestedSignal>(OnTriggerProfileAgentRequested);
             Application.quitting -= OnQuitting;
         }
 
@@ -135,10 +138,36 @@ namespace ChillAI.Controller
         void OnChatMessage(EmojiChatResponseSignal _) => _chatEventCount++;
         void OnTaskChanged(BigEventChangedSignal _) => _taskEventCount++;
         void OnSubTaskCompleted(SubTaskCompletionChangedSignal _) => _taskEventCount++;
+        void OnTriggerProfileAgentRequested(TriggerProfileAgentRequestedSignal signal)
+        {
+            if (signal == null) return;
+
+            var tiers = new List<ProfileTier>(3);
+            if ((signal.TierSelection & ProfileTierSelection.Tier1Identity) != 0)
+                tiers.Add(ProfileTier.Identity);
+            if ((signal.TierSelection & ProfileTierSelection.Tier2Preferences) != 0)
+                tiers.Add(ProfileTier.Preferences);
+            if ((signal.TierSelection & ProfileTierSelection.Tier3CurrentState) != 0)
+                tiers.Add(ProfileTier.CurrentState);
+
+            RunProfileUpdateForTiers(tiers);
+        }
 
         // ── Per-Tier Parallel Pipeline ─────────────────────────────
 
-        async void TryRunProfileUpdate()
+        public void RunProfileUpdateForTiers(IReadOnlyList<ProfileTier> tiers)
+        {
+            if (tiers == null || tiers.Count == 0)
+            {
+                TryRunProfileUpdate();
+                return;
+            }
+
+            var filter = new HashSet<ProfileTier>(tiers);
+            TryRunProfileUpdate(filter);
+        }
+
+        async void TryRunProfileUpdate(HashSet<ProfileTier> tierFilter = null)
         {
             if (_isProcessing) return;
 
@@ -151,11 +180,25 @@ namespace ChillAI.Controller
 
                 // Phase 1: Parallel triage for all tiers
                 var configs = ProfilePrompts.TierConfigs;
-                var triageTasks = new Task<List<TriageUpdate>>[configs.Length];
-
+                var activeConfigs = new List<ProfileTierConfig>();
                 for (var i = 0; i < configs.Length; i++)
                 {
-                    var config = configs[i];
+                    if (tierFilter == null || tierFilter.Contains(configs[i].Tier))
+                        activeConfigs.Add(configs[i]);
+                }
+
+                if (activeConfigs.Count == 0)
+                {
+                    Debug.Log("[ChillAI] [profile] No target tiers selected, skip run.");
+                    ResetCounters();
+                    return;
+                }
+
+                var triageTasks = new Task<List<TriageUpdate>>[activeConfigs.Count];
+
+                for (var i = 0; i < activeConfigs.Count; i++)
+                {
+                    var config = activeConfigs[i];
                     var dataSummary = BuildTierDataSummary(config, chatMessages);
                     var tierSummary = _profileWriter.GetTierSummary(config.Tier);
                     triageTasks[i] = RunTriage(config, dataSummary, tierSummary);
@@ -166,12 +209,12 @@ namespace ChillAI.Controller
                 // Phase 2: Parallel update for tiers that have flagged questions
                 var updateTasks = new List<Task<List<AnswerUpdate>>>();
 
-                for (var i = 0; i < configs.Length; i++)
+                for (var i = 0; i < activeConfigs.Count; i++)
                 {
                     var updates = triageTasks[i].Result;
                     if (updates == null || updates.Count == 0) continue;
 
-                    var config = configs[i];
+                    var config = activeConfigs[i];
                     var dataSummary = BuildTierDataSummary(config, chatMessages);
                     Debug.Log($"[ChillAI] [profile] {config.Tier}: {updates.Count} question(s) flagged for update.");
                     updateTasks.Add(RunUpdate(config, dataSummary, updates));

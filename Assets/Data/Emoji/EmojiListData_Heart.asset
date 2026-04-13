@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3418b889c8ef734ebf6dca64f4ffb65, type: 3}
+  m_Name: EmojiListData_Heart
+  m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.EmojiListData
+  listId: unnamed
+  displayName: Emoji Group
+  emojis:
+  - emoji: "\u2764\uFE0F"
+    description: heart
+  - emoji: "\U0001FAF6"
+    description: heart gesture
+  - emoji: "\U0001F44D"
+    description: like
+  - emoji: "\U0001F44F"
+    description: clap hands
+  - emoji: "\U0001F970"
+    description: heart smile

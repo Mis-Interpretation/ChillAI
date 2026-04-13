@@ -132,7 +132,11 @@ namespace ChillAI.Controller
             var bigEvent = _taskModel.GetBigEvent(bigEventId);
             var subTask = bigEvent?.SubTasks.FirstOrDefault(s => s.Id == subTaskId);
             if (subTask != null)
+            {
                 _signalBus.Fire(new SubTaskCompletionChangedSignal(bigEventId, subTaskId, subTask.IsCompleted));
+                if (subTask.IsCompleted)
+                    _signalBus.Fire(new QuestCheckRequestedSignal(QuestCheckTiming.PerTaskComplete));
+            }
             _taskModel.Save();
         }
 
@@ -168,6 +172,7 @@ namespace ChillAI.Controller
             _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.Removed));
             _taskModel.Save();
             _taskArchive.Save();
+            _signalBus.Fire(new QuestCheckRequestedSignal(QuestCheckTiming.PerTaskComplete));
             return true;
         }
 

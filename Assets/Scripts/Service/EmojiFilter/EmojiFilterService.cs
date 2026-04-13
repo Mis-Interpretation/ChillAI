@@ -9,32 +9,34 @@ namespace ChillAI.Service.EmojiFilter
     public class EmojiFilterService : IEmojiFilterService
     {
         readonly EmojiPaletteData _palette;
-        readonly HashSet<string> _allowedSet;
-        readonly string _promptConstraint;
+        readonly HashSet<string> _allowedSet = new();
         readonly string _placeholder;
-        readonly List<string> _allowedList;
+        readonly List<string> _allowedList = new();
+        string _promptConstraint;
 
         public IReadOnlyCollection<string> AllowedEmojis => _allowedSet;
 
         public EmojiFilterService(EmojiPaletteData palette)
         {
             _palette = palette;
-            _allowedSet = palette.BuildAllowedSet();
             _placeholder = palette.placeholderEmoji ?? "\U0001F512";
-            _allowedList = new List<string>(_allowedSet);
+            RebuildCache();
+        }
 
-            var emojiString = palette.BuildAllowedEmojiString();
-            _promptConstraint = string.IsNullOrEmpty(emojiString)
-                ? ""
-                : "\n\nIMPORTANT CONSTRAINT: You may ONLY use emojis from this exact list: " +
-                  emojiString +
-                  "\nUsing ANY emoji not in this list is strictly forbidden. " +
-                  "Choose the most expressive combination from the allowed set.";
+        public bool UnlockEmojiList(EmojiListData emojiList)
+        {
+            if (emojiList == null || _palette == null)
+                return false;
 
-            if (_allowedSet.Count == 0)
-                Debug.Log("[ChillAI] [emoji-filter] all emojis allowed (wildcard list detected or no lists configured)");
-            else
-                Debug.Log($"[ChillAI] [emoji-filter] initialized with {_allowedSet.Count} allowed emojis");
+            if (_palette.activeLists == null)
+                _palette.activeLists = new List<EmojiListData>();
+            if (_palette.activeLists.Contains(emojiList))
+                return false;
+
+            _palette.activeLists.Add(emojiList);
+            RebuildCache();
+            Debug.Log($"[ChillAI] [emoji-filter] unlocked emoji list: {emojiList.listId}");
+            return true;
         }
 
         public string BuildPromptConstraint() => _promptConstraint;
@@ -247,6 +249,29 @@ namespace ChillAI.Service.EmojiFilter
         {
             public string text;
             public bool isEmoji;
+        }
+
+        void RebuildCache()
+        {
+            _allowedSet.Clear();
+            foreach (var item in _palette.BuildAllowedSet())
+                _allowedSet.Add(item);
+
+            _allowedList.Clear();
+            _allowedList.AddRange(_allowedSet);
+
+            var emojiString = _palette.BuildAllowedEmojiString();
+            _promptConstraint = string.IsNullOrEmpty(emojiString)
+                ? ""
+                : "\n\nIMPORTANT CONSTRAINT: You may ONLY use emojis from this exact list: " +
+                  emojiString +
+                  "\nUsing ANY emoji not in this list is strictly forbidden. " +
+                  "Choose the most expressive combination from the allowed set.";
+
+            if (_allowedSet.Count == 0)
+                Debug.Log("[ChillAI] [emoji-filter] all emojis allowed (wildcard list detected or no lists configured)");
+            else
+                Debug.Log($"[ChillAI] [emoji-filter] initialized with {_allowedSet.Count} allowed emojis");
         }
     }
 }

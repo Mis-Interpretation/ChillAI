@@ -75,6 +75,46 @@
     white-space: normal;
 }
 
+/* ── Quest styling on existing task rows ── */
+.list-item--quest {
+    background-color: rgba(95, 130, 255, 0.08);
+    border-width: 1px;
+    border-color: rgba(120, 170, 255, 0.22);
+}
+
+.list-item--quest:hover {
+    background-color: rgba(95, 130, 255, 0.12);
+}
+
+.list-item--quest .list-item-title {
+    color: rgba(220, 240, 255, 0.96);
+}
+
+.sub-task-item--quest {
+    background-color: rgba(100, 130, 255, 0.04);
+    border-left-width: 2px;
+    border-left-color: rgba(120, 170, 255, 0.24);
+}
+
+.sub-task-item--quest .sub-task-title {
+    color: rgba(214, 230, 248, 0.95);
+}
+
+.sub-task-checkbox--readonly {
+    opacity: 0.75;
+}
+
+.sub-task-checkbox--readonly > .unity-toggle__input > .unity-toggle__checkmark {
+    border-radius: 2px;
+    width: 16px;
+    height: 16px;
+}
+
+.sub-task-checkbox--readonly:checked > .unity-toggle__input > .unity-toggle__checkmark {
+    background-color: rgba(110, 160, 255, 0.58);
+    border-color: rgba(130, 185, 255, 0.76);
+}
+
 /* ── Two-column layout ── */
 .columns {
     flex-direction: row;

@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 947498cf5e7368e43830eb0628ff3018, type: 3}
+  m_Name: QuestAgent
+  m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.AgentProfile
+  agentId: quest-agent
+  displayName: Quest Agent
+  modelName: gpt-4o
+  maxTokens: 700
+  temperature: 0.2
+  systemPrompt: 'You are a quest condition evaluator. Judge each quest step based on the provided latest user message and condition prompts.
+
+    Return ONLY valid JSON.
+
+    For each stepId:
+    - isCompleted = true only when evidence is explicit.
+    - if uncertain, set false.
+    - reason should be one short sentence.'
+  maxHistoryToSend: 8
+  useJsonSchema: 1
+  schemaName: quest_step_eval
+  jsonSchema: '{"type":"object","properties":{"results":{"type":"array","items":{"type":"object","properties":{"stepId":{"type":"string"},"isCompleted":{"type":"boolean"},"reason":{"type":"string"}},"required":["stepId","isCompleted","reason"],"additionalProperties":false}}},"required":["results"],"additionalProperties":false}'

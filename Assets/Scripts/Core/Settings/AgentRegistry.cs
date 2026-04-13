@@ -31,6 +31,7 @@ namespace ChillAI.Core.Settings
         {
             public const string TaskDecomposition = "task-decomposition";
             public const string EmojiChat = "emoji-chat";
+            public const string Quest = "quest-agent";
             public const string ProfileTriageT1 = "profile-triage-t1";
             public const string ProfileTriageT2 = "profile-triage-t2";
             public const string ProfileTriageT3 = "profile-triage-t3";

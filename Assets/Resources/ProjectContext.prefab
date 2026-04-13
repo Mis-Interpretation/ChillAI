@@ -80,3 +80,4 @@ MonoBehaviour:
   behaviorMappingData: {fileID: 11400000, guid: f3bdc02893859ef4ab73e9eee66c7bf1, type: 2}
   agentRegistry: {fileID: 11400000, guid: 04b76cd8df323da499cea7ea2d750d74, type: 2}
   emojiPaletteData: {fileID: 11400000, guid: 66d723cff91f9454cbcdf6a80e5d8db2, type: 2}
+  questDatabase: {fileID: 11400000, guid: 3b94271100134bf88a2239be3e9b8c5f, type: 2}

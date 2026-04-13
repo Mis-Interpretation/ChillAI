@@ -6,6 +6,7 @@ using ChillAI.Model.BehaviorMapping;
 using ChillAI.Model.ChatHistory;
 using ChillAI.Model.Expression;
 using ChillAI.Model.ProcessMonitor;
+using ChillAI.Model.Quest;
 using ChillAI.Model.TaskArchive;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Model.UsageTracking;
@@ -14,6 +15,7 @@ using ChillAI.Service.AI;
 using ChillAI.Service.EmojiFilter;
 using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
+using ChillAI.Service.Quest;
 using UnityEngine;
 using Zenject;
 
@@ -33,6 +35,9 @@ namespace ChillAI.Installers
         [Header("Emoji Filter")]
         [SerializeField] EmojiPaletteData emojiPaletteData;
 
+        [Header("Quest")]
+        [SerializeField] QuestDatabase questDatabase;
+
         public override void InstallBindings()
         {
             // Signal system
@@ -44,6 +49,10 @@ namespace ChillAI.Installers
             Container.DeclareSignal<BigEventChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<SubTaskCompletionChangedSignal>().OptionalSubscriber();
             Container.DeclareSignal<TaskAddedViaChatSignal>().OptionalSubscriber();
+            Container.DeclareSignal<QuestCheckRequestedSignal>().OptionalSubscriber();
+            Container.DeclareSignal<QuestProgressChangedSignal>().OptionalSubscriber();
+            Container.DeclareSignal<UnlockEmojiListRequestedSignal>().OptionalSubscriber();
+            Container.DeclareSignal<TriggerProfileAgentRequestedSignal>().OptionalSubscriber();
             Container.DeclareSignal<DisplaySwitchedSignal>().OptionalSubscriber();
             Container.DeclareSignal<ProfileUpdatedSignal>().OptionalSubscriber();
             Container.DeclareSignal<ToggleProfileInsightPanelSignal>().OptionalSubscriber();
@@ -55,6 +64,7 @@ namespace ChillAI.Installers
             Container.BindInstance(behaviorMappingData);
             Container.BindInstance(agentRegistry);
             Container.BindInstance(emojiPaletteData);
+            Container.BindInstance(questDatabase);
 
             // Persistent user settings (JSON-backed)
             Container.Bind<UserSettingsService>().AsSingle().NonLazy();
@@ -74,6 +84,8 @@ namespace ChillAI.Installers
                 .To<TaskDecompositionModel>().AsSingle();
             Container.Bind<ITaskArchiveStore>()
                 .To<TaskArchiveModel>().AsSingle();
+            Container.Bind<IQuestRuntimeStore>()
+                .To<QuestRuntimeModel>().AsSingle();
             Container.Bind(typeof(IUsageTrackingReader), typeof(IUsageTrackingWriter))
                 .To<UsageTrackingModel>().AsSingle();
             Container.Bind(typeof(IChatHistoryReader), typeof(IChatHistoryWriter))
@@ -89,6 +101,10 @@ namespace ChillAI.Installers
                 .To<OpenAIService>().AsSingle();
             Container.Bind<IEmojiFilterService>()
                 .To<EmojiFilterService>().AsSingle();
+            Container.Bind<QuestRuleConditionEvaluator>().AsSingle();
+            Container.Bind<QuestAgentEvaluator>().AsSingle();
+            Container.Bind<QuestConditionEvaluator>().AsSingle();
+            Container.Bind<QuestActionExecutor>().AsSingle();
 
             // Controllers
             Container.BindInterfacesAndSelfTo<ProcessMonitorController>().AsSingle();
@@ -98,6 +114,7 @@ namespace ChillAI.Installers
             Container.BindInterfacesAndSelfTo<UsageTrackingController>().AsSingle();
             Container.BindInterfacesAndSelfTo<ProfileController>().AsSingle();
             Container.Bind<DisplaySwitchController>().AsSingle();
+            Container.Bind<QuestController>().AsSingle().NonLazy();
         }
     }
 }

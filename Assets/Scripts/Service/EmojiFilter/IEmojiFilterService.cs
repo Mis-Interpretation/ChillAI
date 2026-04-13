@@ -1,3 +1,4 @@
+using ChillAI.Core.Settings;
 using System.Collections.Generic;
 
 namespace ChillAI.Service.EmojiFilter
@@ -15,5 +16,11 @@ namespace ChillAI.Service.EmojiFilter
         /// Builds a prompt constraint string to append to the system prompt.
         /// </summary>
         string BuildPromptConstraint();
+
+        /// <summary>
+        /// Adds an emoji list into the active palette at runtime.
+        /// Returns true when palette changes.
+        /// </summary>
+        bool UnlockEmojiList(EmojiListData emojiList);
     }
 }

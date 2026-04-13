@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using ChillAI.Controller;
 using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
@@ -18,6 +19,7 @@ namespace ChillAI.View.TaskUI
     {
         SignalBus _signalBus;
         TaskDecompositionController _controller;
+        QuestController _questController;
         ITaskDecompositionReader _taskReader;
         IConfigReader _configReader;
         IWindowService _windowService;
@@ -52,6 +54,7 @@ namespace ChillAI.View.TaskUI
         float _lastListClickTime;
         string _lastListClickId;
         const float DoubleClickThreshold = 0.5f;
+        const string QuestVirtualBigEventId = "__quest_virtual_big_event__";
         /// <summary>Top/bottom fraction of a list row treated as "insert line" gaps; middle is merge-into.</summary>
         const float ListRowEdgeGapFraction = 0.24f;
 
@@ -75,6 +78,7 @@ namespace ChillAI.View.TaskUI
         public void Construct(
             SignalBus signalBus,
             TaskDecompositionController controller,
+            QuestController questController,
             ITaskDecompositionReader taskReader,
             IConfigReader configReader,
             IWindowService windowService,
@@ -84,6 +88,7 @@ namespace ChillAI.View.TaskUI
         {
             _signalBus = signalBus;
             _controller = controller;
+            _questController = questController;
             _taskReader = taskReader;
             _configReader = configReader;
             _windowService = windowService;
@@ -153,6 +158,7 @@ namespace ChillAI.View.TaskUI
             _signalBus?.Subscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.Subscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
             _signalBus?.Subscribe<TaskAddedViaChatSignal>(OnTaskAddedViaChat);
+            _signalBus?.Subscribe<QuestProgressChangedSignal>(OnQuestProgressChanged);
 
             UpdateStatus();
             AutoSelectFirst();
@@ -216,6 +222,7 @@ namespace ChillAI.View.TaskUI
             _signalBus?.TryUnsubscribe<BigEventChangedSignal>(OnBigEventChanged);
             _signalBus?.TryUnsubscribe<SubTaskCompletionChangedSignal>(OnSubTaskCompletionChanged);
             _signalBus?.TryUnsubscribe<TaskAddedViaChatSignal>(OnTaskAddedViaChat);
+            _signalBus?.TryUnsubscribe<QuestProgressChangedSignal>(OnQuestProgressChanged);
         }
 
         // ── Panel ──
@@ -293,6 +300,12 @@ namespace ChillAI.View.TaskUI
 
         void AutoSelectFirst()
         {
+            if (HasQuestToShow())
+            {
+                _selectedBigEventId = QuestVirtualBigEventId;
+                return;
+            }
+
             _selectedBigEventId = _taskReader.BigEvents.Count > 0
                 ? _taskReader.BigEvents[0].Id
                 : null;
@@ -330,11 +343,39 @@ namespace ChillAI.View.TaskUI
         {
             _listScroll.Clear();
 
+            if (TryGetDisplayedQuest(out var quest))
+            {
+                var questItem = CreateQuestListItem(quest);
+                _listScroll.Add(questItem);
+            }
+
             foreach (var bigEvent in _taskReader.BigEvents)
             {
                 var item = CreateListItem(bigEvent);
                 _listScroll.Add(item);
             }
+        }
+
+        VisualElement CreateQuestListItem(QuestViewData quest)
+        {
+            var row = new VisualElement();
+            row.AddToClassList("list-item");
+            row.AddToClassList("list-item--quest");
+            row.userData = QuestVirtualBigEventId;
+            if (_selectedBigEventId == QuestVirtualBigEventId)
+                row.AddToClassList("list-item--selected");
+
+            var title = new Label($"Quest: {quest.Title}");
+            title.AddToClassList("list-item-title");
+            row.Add(title);
+
+            row.RegisterCallback<ClickEvent>(_ =>
+            {
+                if (_activeEditField != null) return;
+                SelectBigEvent(QuestVirtualBigEventId);
+            });
+
+            return row;
         }
 
         VisualElement CreateListItem(BigEvent bigEvent)
@@ -407,6 +448,12 @@ namespace ChillAI.View.TaskUI
         {
             _taskScroll.Clear();
 
+            if (_selectedBigEventId == QuestVirtualBigEventId)
+            {
+                RebuildQuestRightColumn();
+                return;
+            }
+
             var selected = _selectedBigEventId != null
                 ? _taskReader.GetBigEvent(_selectedBigEventId)
                 : null;
@@ -475,56 +522,119 @@ namespace ChillAI.View.TaskUI
             _taskScroll.Add(addTaskBtn);
         }
 
+        void RebuildQuestRightColumn()
+        {
+            if (!TryGetDisplayedQuest(out var quest))
+                return;
+
+            var completeRow = new VisualElement();
+            completeRow.AddToClassList("big-task-archive-row");
+            var completeBtn = new Button { text = "完成" };
+            completeBtn.AddToClassList("big-task-complete-btn");
+            completeBtn.SetEnabled(IsQuestReadyForComplete(quest));
+            var questId = quest.QuestId;
+            completeBtn.clicked += () =>
+            {
+                CommitEditMode();
+                RemoveInlineInput();
+
+                _selectedBigEventId = null;
+                if (_questController.TryCompleteQuest(questId))
+                {
+                    AutoSelectFirst();
+                    RebuildLeftColumn();
+                    RebuildRightColumn();
+                }
+                else
+                {
+                    _selectedBigEventId = QuestVirtualBigEventId;
+                }
+            };
+            completeRow.Add(completeBtn);
+            _taskScroll.Add(completeRow);
+
+            foreach (var step in quest.Steps)
+            {
+                var item = CreateSubTaskElement(
+                    QuestVirtualBigEventId,
+                    step.StepId,
+                    step.Title,
+                    step.IsCompleted,
+                    isReadOnly: true);
+                _taskScroll.Add(item);
+            }
+        }
+
         VisualElement CreateSubTaskElement(string bigEventId, SubTask subTask)
+        {
+            return CreateSubTaskElement(bigEventId, subTask.Id, subTask.Title, subTask.IsCompleted, false);
+        }
+
+        VisualElement CreateSubTaskElement(
+            string bigEventId,
+            string subTaskId,
+            string titleText,
+            bool isCompleted,
+            bool isReadOnly)
         {
             var row = new VisualElement();
             row.AddToClassList("sub-task-item");
-            row.name = "subtask-" + subTask.Id;
+            if (isReadOnly)
+                row.AddToClassList("sub-task-item--quest");
+            row.name = "subtask-" + subTaskId;
 
             var checkbox = new Toggle();
             checkbox.AddToClassList("sub-task-checkbox");
-            checkbox.value = subTask.IsCompleted;
+            if (isReadOnly)
+            {
+                checkbox.AddToClassList("sub-task-checkbox--readonly");
+                checkbox.SetEnabled(false);
+            }
+            checkbox.value = isCompleted;
 
-            var label = new Label(subTask.Title);
+            var label = new Label(titleText);
             label.AddToClassList("sub-task-title");
-            label.EnableInClassList("sub-task-title--completed", subTask.IsCompleted);
+            label.EnableInClassList("sub-task-title--completed", isCompleted);
 
             var deleteBtn = new Button { text = "✕" };
             deleteBtn.AddToClassList("sub-task-delete");
+            if (isReadOnly)
+                deleteBtn.style.display = DisplayStyle.None;
 
             row.Add(checkbox);
             row.Add(label);
             row.Add(deleteBtn);
 
-            var subTaskId = subTask.Id;
-
-            checkbox.RegisterValueChangedCallback(_ =>
+            if (!isReadOnly)
             {
-                _controller.ToggleSubTask(bigEventId, subTaskId);
-            });
-
-            deleteBtn.clicked += () => _controller.DeleteSubTask(bigEventId, subTaskId);
-
-            // Click label → inline edit
-            label.RegisterCallback<ClickEvent>(evt =>
-            {
-                if (evt.button != 0 || _activeEditField != null) return;
-                var localPos = label.WorldToLocal(evt.position);
-                EnterEditMode(label, localPos.x, "edit-field--sub", newText =>
+                checkbox.RegisterValueChangedCallback(_ =>
                 {
-                    _controller.UpdateSubTaskTitle(bigEventId, subTaskId, newText);
+                    _controller.ToggleSubTask(bigEventId, subTaskId);
                 });
-            });
 
-            // Long-press drag
-            var dragManip = new TaskItemDragManipulator(
-                () => new DragItemInfo { Type = DragItemType.SubTask, ItemId = subTaskId, ParentBigEventId = bigEventId },
-                ResolveDropTarget,
-                HandleDragEnd,
-                () => { CommitEditMode(); RemoveInlineInput(); },
-                _panel,
-                _appSettings.taskPanelDragLongPressMs);
-            row.AddManipulator(dragManip);
+                deleteBtn.clicked += () => _controller.DeleteSubTask(bigEventId, subTaskId);
+
+                // Click label → inline edit
+                label.RegisterCallback<ClickEvent>(evt =>
+                {
+                    if (evt.button != 0 || _activeEditField != null) return;
+                    var localPos = label.WorldToLocal(evt.position);
+                    EnterEditMode(label, localPos.x, "edit-field--sub", newText =>
+                    {
+                        _controller.UpdateSubTaskTitle(bigEventId, subTaskId, newText);
+                    });
+                });
+
+                // Long-press drag
+                var dragManip = new TaskItemDragManipulator(
+                    () => new DragItemInfo { Type = DragItemType.SubTask, ItemId = subTaskId, ParentBigEventId = bigEventId },
+                    ResolveDropTarget,
+                    HandleDragEnd,
+                    () => { CommitEditMode(); RemoveInlineInput(); },
+                    _panel,
+                    _appSettings.taskPanelDragLongPressMs);
+                row.AddManipulator(dragManip);
+            }
 
             return row;
         }
@@ -762,6 +872,14 @@ namespace ChillAI.View.TaskUI
             }).StartingIn(5000);
         }
 
+        void OnQuestProgressChanged(QuestProgressChangedSignal _)
+        {
+            if (_selectedBigEventId == QuestVirtualBigEventId && !HasQuestToShow())
+                AutoSelectFirst();
+            RebuildLeftColumn();
+            RebuildRightColumn();
+        }
+
         // ── Drag and Drop ──
 
         DropTarget ResolveDropTarget(Vector2 panelPos, DragItemInfo info)
@@ -776,7 +894,9 @@ namespace ChillAI.View.TaskUI
             // BigEvent dragged to right column → demote
             if (info.Type == DragItemType.BigEvent && taskBounds.Contains(panelPos))
             {
-                if (_selectedBigEventId != null && _selectedBigEventId != info.ItemId)
+                if (_selectedBigEventId != null &&
+                    _selectedBigEventId != info.ItemId &&
+                    !IsQuestVirtualId(_selectedBigEventId))
                 {
                     float indicatorY = CalcIndicatorY(_taskScroll, panelPos.y, "sub-task-item");
                     return new DropTarget
@@ -869,7 +989,7 @@ namespace ChillAI.View.TaskUI
                 }
 
                 var targetId = child.userData as string;
-                if (string.IsNullOrEmpty(targetId) || targetId == info.ParentBigEventId)
+                if (string.IsNullOrEmpty(targetId) || targetId == info.ParentBigEventId || IsQuestVirtualId(targetId))
                     return new DropTarget { Type = DropTargetType.None };
 
                 return new DropTarget
@@ -906,7 +1026,7 @@ namespace ChillAI.View.TaskUI
                 var c = container[i];
                 if (c == item)
                     return n;
-                if (c.ClassListContains("list-item"))
+                if (c.ClassListContains("list-item") && !IsQuestVirtualId(c.userData as string))
                     n++;
             }
             return n;
@@ -924,6 +1044,7 @@ namespace ChillAI.View.TaskUI
             {
                 var child = container[i];
                 if (!child.ClassListContains(itemClass)) continue;
+                if (itemClass == "list-item" && IsQuestVirtualId(child.userData as string)) continue;
                 var bounds = child.worldBound;
                 float midY = bounds.y + bounds.height * 0.5f;
                 if (panelY > midY)
@@ -946,6 +1067,11 @@ namespace ChillAI.View.TaskUI
             float indicatorY;
             CalcInsertIndexAndIndicator(scroll, panelY, itemClass, out unused, out indicatorY);
             return indicatorY;
+        }
+
+        static bool IsQuestVirtualId(string id)
+        {
+            return id == QuestVirtualBigEventId;
         }
 
         void HandleDragEnd(DragItemInfo info, DropTarget dropTarget)
@@ -1006,6 +1132,45 @@ namespace ChillAI.View.TaskUI
             {
                 _statusLabel.text = "";
             }
+        }
+
+        bool HasQuestToShow()
+        {
+            return TryGetDisplayedQuest(out _);
+        }
+
+        static bool IsQuestReadyForComplete(QuestViewData quest)
+        {
+            if (quest == null || !quest.IsUnlocked || quest.IsCompleted || quest.Steps == null || quest.Steps.Count == 0)
+                return false;
+            foreach (var step in quest.Steps)
+            {
+                if (!step.IsCompleted)
+                    return false;
+            }
+
+            return true;
+        }
+
+        bool TryGetDisplayedQuest(out QuestViewData quest)
+        {
+            quest = null;
+            if (_questController == null) return false;
+
+            IReadOnlyList<QuestViewData> quests = _questController.GetQuestViews();
+            if (quests == null || quests.Count == 0)
+                return false;
+
+            foreach (var candidate in quests)
+            {
+                if (candidate.IsUnlocked && !candidate.IsCompleted)
+                {
+                    quest = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
     }
 }

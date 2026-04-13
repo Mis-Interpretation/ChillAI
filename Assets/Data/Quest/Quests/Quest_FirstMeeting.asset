@@ -1,0 +1,50 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2d357a03d572a048a294b33501c4ebb, type: 3}
+  m_Name: Quest_FirstMeeting
+  m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.QuestDefinition
+  questId: quest_first_meeting
+  title: "\u521D\u6B21\u89C1\u9762"
+  unlockCondition:
+    requiredQuests: []
+  onCompleteActions:
+  - {fileID: 11400000, guid: 60b02744ade0485c86dd651f39a656a5, type: 2}
+  - {fileID: 11400000, guid: 38c9d62281b84b138f2ca99b91127630, type: 2}
+  steps:
+  - stepId: step_name
+    displayTitle: "\u4F60\u7684\u540D\u5B57\u662F\uFF1F"
+    smartConditionPrompt: User clearly states their name.
+    ruleCondition:
+      conditionType: 1
+      stringArg: "\u6211\u53EB,\u540D\u5B57,\u53EF\u4EE5\u53EB\u6211,my name is,i
+        am"
+      intArg: 0
+    conditionLogic: 1
+    checkTiming: 0
+  - stepId: step_identity
+    displayTitle: "\u4F60\u7684\u8EAB\u4EFD\u662F\uFF1F"
+    smartConditionPrompt: User clearly states role, or occupation. not just names
+    ruleCondition:
+      conditionType: 1
+      stringArg: "\u6211\u662F,\u8EAB\u4EFD,\u804C\u4E1A,\u5B66\u751F,\u5DE5\u7A0B\u5E08,designer,developer"
+      intArg: 0
+    conditionLogic: 1
+    checkTiming: 0
+  - stepId: step_recent_plan
+    displayTitle: "\u6700\u8FD1\u60F3\u8981\u505A\u4EC0\u4E48\u4E8B\u60C5\uFF1F"
+    smartConditionPrompt: User clearly states a recent plan, goal, or next action.
+    ruleCondition:
+      conditionType: 1
+      stringArg: "\u6700\u8FD1,\u6253\u7B97,\u8BA1\u5212,\u60F3\u8981,\u76EE\u6807,\u51C6\u5907,todo,plan"
+      intArg: 0
+    conditionLogic: 1
+    checkTiming: 0

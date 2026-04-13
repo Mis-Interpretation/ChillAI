@@ -20,6 +20,7 @@ namespace ChillAI.View.SystemMenu
         [Inject] IWindowService _windowService;
         [Inject] AppSettings _appSettings;
         [Inject] UserSettingsService _userSettings;
+        [Inject] QuestController _questController;
         [Inject] DisplaySwitchController _displaySwitchController;
         [Inject] SignalBus _signalBus;
         [Inject] UiLayoutController _uiLayout;
@@ -91,6 +92,7 @@ namespace ChillAI.View.SystemMenu
             root.Q<Button>("profile-insight-btn").clicked += OnProfileInsight;
             root.Q<Button>("switch-display-btn").clicked += OnSwitchDisplay;
             root.Q<Button>("exit-btn").clicked += OnExit;
+            root.Q<Button>("reset-quest-btn").clicked += OnResetQuest;
 
             // Settings panel
             root.Q<Button>("settings-close-btn").clicked += CloseSettings;
@@ -300,6 +302,11 @@ namespace ChillAI.View.SystemMenu
 #else
             Application.Quit();
 #endif
+        }
+
+        void OnResetQuest()
+        {
+            _questController?.ResetProgress();
         }
     }
 }

@@ -25,6 +25,7 @@ namespace ChillAI.Controller
 
         AgentProfile _taskRouterProfile;
         AgentProfile _augmentedEmojiProfile;
+        string _lastEmojiConstraint;
         bool _isProcessing;
 
         public EmojiChatController(
@@ -47,6 +48,7 @@ namespace ChillAI.Controller
             _emojiFilter = emojiFilter;
 
             _chatHistory.RegisterPersistentAgent(AgentRegistry.Ids.EmojiChat);
+            _signalBus.Subscribe<UnlockEmojiListRequestedSignal>(OnUnlockEmojiListRequested);
         }
 
         public bool IsAIConfigured => _aiService.IsConfigured;
@@ -58,10 +60,16 @@ namespace ChillAI.Controller
         {
             get
             {
-                if (_augmentedEmojiProfile != null) return _augmentedEmojiProfile;
-
                 var constraint = _emojiFilter.BuildPromptConstraint();
-                if (string.IsNullOrEmpty(constraint)) return EmojiProfile;
+                if (string.IsNullOrEmpty(constraint))
+                {
+                    _augmentedEmojiProfile = null;
+                    _lastEmojiConstraint = "";
+                    return EmojiProfile;
+                }
+
+                if (_augmentedEmojiProfile != null && _lastEmojiConstraint == constraint)
+                    return _augmentedEmojiProfile;
 
                 var baseProfile = EmojiProfile;
                 _augmentedEmojiProfile = ScriptableObject.CreateInstance<AgentProfile>();
@@ -75,6 +83,7 @@ namespace ChillAI.Controller
                 _augmentedEmojiProfile.useJsonSchema = baseProfile.useJsonSchema;
                 _augmentedEmojiProfile.schemaName = baseProfile.schemaName;
                 _augmentedEmojiProfile.jsonSchema = baseProfile.jsonSchema;
+                _lastEmojiConstraint = constraint;
                 return _augmentedEmojiProfile;
             }
         }
@@ -140,6 +149,9 @@ namespace ChillAI.Controller
 
                 // Fire filtered emoji response
                 _signalBus.Fire(new EmojiChatResponseSignal(userMessage, filtered));
+
+                // Per-chat quest check (quest and task systems are independent).
+                _signalBus.Fire(new QuestCheckRequestedSignal(QuestCheckTiming.PerChat, userMessage));
 
                 // If task intent detected, route to task agent in background
                 if (_userSettings.Data.autoGenerateTasks && !string.IsNullOrWhiteSpace(parsed.task_intent))
@@ -309,6 +321,12 @@ namespace ChillAI.Controller
         {
             try { return JsonUtility.FromJson<T>(json); }
             catch { return null; }
+        }
+
+        void OnUnlockEmojiListRequested(UnlockEmojiListRequestedSignal signal)
+        {
+            if (signal?.EmojiList == null) return;
+            _emojiFilter.UnlockEmojiList(signal.EmojiList);
         }
 
         // ── Response Models ──

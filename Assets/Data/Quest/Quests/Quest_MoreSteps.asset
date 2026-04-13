@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a2d357a03d572a048a294b33501c4ebb, type: 3}
+  m_Name: Quest_MoreSteps
+  m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.QuestDefinition
+  questId: quest_more_steps
+  title: "\u52A0\u6DF1\u4E86\u89E3"
+  unlockCondition:
+    requiredQuests:
+    - {fileID: 11400000, guid: db948f8f1cdf44d8830cccd2f9e2e5b2, type: 2}
+  onCompleteActions:
+  - {fileID: 11400000, guid: 60b02744ade0485c86dd651f39a656a5, type: 2}
+  steps:
+  - stepId: like_things
+    displayTitle: "\u4F60\u6700\u559C\u6B22\u7684\u4E8B\u60C5\u662F\uFF1F"
+    smartConditionPrompt: "\u7528\u6237\u63D0\u5230\u4E86\u81EA\u5DF1\u6700\u559C\u6B22\u7684\u4E8B\u60C5\u662F\uFF1F"
+    ruleCondition:
+      conditionType: 0
+      stringArg: 
+      intArg: 0
+    conditionLogic: 0
+    checkTiming: 0
