@@ -11,6 +11,7 @@ using ChillAI.Model.TaskDecomposition;
 using ChillAI.Model.UsageTracking;
 using ChillAI.Model.UserProfile;
 using ChillAI.Service.AI;
+using ChillAI.Service.EmojiFilter;
 using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using UnityEngine;
@@ -28,6 +29,9 @@ namespace ChillAI.Installers
 
         [Header("Agent System")]
         [SerializeField] AgentRegistry agentRegistry;
+
+        [Header("Emoji Filter")]
+        [SerializeField] EmojiPaletteData emojiPaletteData;
 
         public override void InstallBindings()
         {
@@ -50,6 +54,7 @@ namespace ChillAI.Installers
             Container.BindInstance(expressionMappingData);
             Container.BindInstance(behaviorMappingData);
             Container.BindInstance(agentRegistry);
+            Container.BindInstance(emojiPaletteData);
 
             // Persistent user settings (JSON-backed)
             Container.Bind<UserSettingsService>().AsSingle().NonLazy();
@@ -82,6 +87,8 @@ namespace ChillAI.Installers
             Container.Bind<UiLayoutController>().AsSingle();
             Container.Bind<IAIService>()
                 .To<OpenAIService>().AsSingle();
+            Container.Bind<IEmojiFilterService>()
+                .To<EmojiFilterService>().AsSingle();
 
             // Controllers
             Container.BindInterfacesAndSelfTo<ProcessMonitorController>().AsSingle();

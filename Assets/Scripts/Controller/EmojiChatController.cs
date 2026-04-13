@@ -6,6 +6,7 @@ using ChillAI.Core.Signals;
 using ChillAI.Model.ChatHistory;
 using ChillAI.Model.TaskDecomposition;
 using ChillAI.Service.AI;
+using ChillAI.Service.EmojiFilter;
 using UnityEngine;
 using Zenject;
 
@@ -20,8 +21,10 @@ namespace ChillAI.Controller
         readonly TaskDecompositionController _taskController;
         readonly IChatHistoryWriter _chatHistory;
         readonly UserSettingsService _userSettings;
+        readonly IEmojiFilterService _emojiFilter;
 
         AgentProfile _taskRouterProfile;
+        AgentProfile _augmentedEmojiProfile;
         bool _isProcessing;
 
         public EmojiChatController(
@@ -31,7 +34,8 @@ namespace ChillAI.Controller
             ITaskDecompositionReader taskReader,
             TaskDecompositionController taskController,
             IChatHistoryWriter chatHistory,
-            UserSettingsService userSettings)
+            UserSettingsService userSettings,
+            IEmojiFilterService emojiFilter)
         {
             _aiService = aiService;
             _agentRegistry = agentRegistry;
@@ -40,6 +44,7 @@ namespace ChillAI.Controller
             _taskController = taskController;
             _chatHistory = chatHistory;
             _userSettings = userSettings;
+            _emojiFilter = emojiFilter;
 
             _chatHistory.RegisterPersistentAgent(AgentRegistry.Ids.EmojiChat);
         }
@@ -48,6 +53,31 @@ namespace ChillAI.Controller
         public bool IsProcessing => _isProcessing;
 
         AgentProfile EmojiProfile => _agentRegistry.GetProfile(AgentRegistry.Ids.EmojiChat);
+
+        AgentProfile AugmentedEmojiProfile
+        {
+            get
+            {
+                if (_augmentedEmojiProfile != null) return _augmentedEmojiProfile;
+
+                var constraint = _emojiFilter.BuildPromptConstraint();
+                if (string.IsNullOrEmpty(constraint)) return EmojiProfile;
+
+                var baseProfile = EmojiProfile;
+                _augmentedEmojiProfile = ScriptableObject.CreateInstance<AgentProfile>();
+                _augmentedEmojiProfile.agentId = baseProfile.agentId;
+                _augmentedEmojiProfile.displayName = baseProfile.displayName;
+                _augmentedEmojiProfile.modelName = baseProfile.modelName;
+                _augmentedEmojiProfile.maxTokens = baseProfile.maxTokens;
+                _augmentedEmojiProfile.temperature = baseProfile.temperature;
+                _augmentedEmojiProfile.systemPrompt = baseProfile.systemPrompt + constraint;
+                _augmentedEmojiProfile.maxHistoryToSend = baseProfile.maxHistoryToSend;
+                _augmentedEmojiProfile.useJsonSchema = baseProfile.useJsonSchema;
+                _augmentedEmojiProfile.schemaName = baseProfile.schemaName;
+                _augmentedEmojiProfile.jsonSchema = baseProfile.jsonSchema;
+                return _augmentedEmojiProfile;
+            }
+        }
 
         AgentProfile TaskRouterProfile
         {
@@ -96,17 +126,20 @@ namespace ChillAI.Controller
             {
                 _isProcessing = true;
 
+                var augmented = AugmentedEmojiProfile;
                 var historyTuples = BuildHistoryTuples(profile);
-                var response = await _aiService.ChatAsync(profile, historyTuples, userMessage);
+                var response = await _aiService.ChatAsync(augmented, historyTuples, userMessage);
 
+                // Store original response in history to keep AI context coherent
                 _chatHistory.AddEntry(profile.agentId, "user", userMessage);
                 _chatHistory.AddEntry(profile.agentId, "assistant", response);
                 _chatHistory.Save();
 
                 var parsed = ParseChatResponse(response);
+                var filtered = _emojiFilter.FilterMessages(parsed.messages);
 
-                // Fire emoji response immediately so user sees emojis fast
-                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, parsed.messages));
+                // Fire filtered emoji response
+                _signalBus.Fire(new EmojiChatResponseSignal(userMessage, filtered));
 
                 // If task intent detected, route to task agent in background
                 if (_userSettings.Data.autoGenerateTasks && !string.IsNullOrWhiteSpace(parsed.task_intent))
