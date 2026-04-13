@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
@@ -13,7 +12,7 @@ namespace ChillAI.Service.EmojiFilter
         readonly HashSet<string> _allowedSet;
         readonly string _promptConstraint;
         readonly string _placeholder;
-        readonly List<string> _allowedList; // for random fallback picks
+        readonly List<string> _allowedList;
 
         public IReadOnlyCollection<string> AllowedEmojis => _allowedSet;
 
@@ -43,7 +42,7 @@ namespace ChillAI.Service.EmojiFilter
         public List<string> FilterMessages(List<string> messages)
         {
             if (messages == null) return new List<string>();
-            if (_allowedSet.Count == 0) return messages; // no filter configured
+            if (_allowedSet.Count == 0) return messages;
 
             var result = new List<string>(messages.Count);
             foreach (var msg in messages)
@@ -53,7 +52,6 @@ namespace ChillAI.Service.EmojiFilter
                     result.Add(filtered);
             }
 
-            // If everything got filtered out, show a single placeholder
             if (result.Count == 0 && messages.Count > 0)
                 result.Add(_placeholder);
 
@@ -64,72 +62,191 @@ namespace ChillAI.Service.EmojiFilter
         {
             if (string.IsNullOrEmpty(message)) return message;
 
+            var tokens = Tokenize(message);
             var sb = new StringBuilder();
-            var replacedCount = 0;
-            var emojiCount = 0;
 
-            var enumerator = StringInfo.GetTextElementEnumerator(message);
-            while (enumerator.MoveNext())
+            foreach (var token in tokens)
             {
-                var element = enumerator.GetTextElement();
-
-                if (IsEmojiTextElement(element))
+                if (token.isEmoji)
                 {
-                    emojiCount++;
-                    var normalized = EmojiPaletteData.NormalizeEmoji(element);
-
-                    if (_allowedSet.Contains(normalized))
-                    {
-                        sb.Append(element); // keep original (with variation selectors etc.)
-                    }
-                    else
-                    {
-                        sb.Append(_placeholder);
-                        replacedCount++;
-                    }
+                    var normalized = EmojiPaletteData.NormalizeEmoji(token.text);
+                    sb.Append(_allowedSet.Contains(normalized) ? token.text : _placeholder);
                 }
                 else
                 {
-                    // Keep non-emoji characters (spaces, etc.)
-                    sb.Append(element);
+                    sb.Append(token.text);
                 }
             }
 
             return sb.ToString().Trim();
         }
 
-        string PickRandomAllowed()
+        // ── Emoji tokenizer (ZWJ-aware) ──
+
+        /// <summary>
+        /// Splits a string into tokens. Each token is either a complete emoji sequence
+        /// (including ZWJ chains, variation selectors, skin tones, gender signs)
+        /// or a run of non-emoji text.
+        /// </summary>
+        static List<Token> Tokenize(string s)
         {
-            if (_allowedList.Count == 0) return _placeholder;
-            return _allowedList[UnityEngine.Random.Range(0, _allowedList.Count)];
-        }
+            var tokens = new List<Token>();
+            var textBuf = new StringBuilder();
+            var pos = 0;
 
-        // ── Emoji detection (adapted from EmojiChatPanelView) ──
-
-        static bool IsEmojiTextElement(string textElement)
-        {
-            if (string.IsNullOrEmpty(textElement))
-                return false;
-
-            for (var i = 0; i < textElement.Length; i++)
+            while (pos < s.Length)
             {
-                var codePoint = char.ConvertToUtf32(textElement, i);
-                if (char.IsSurrogatePair(textElement, i))
-                    i++;
-
-                if (IsEmojiBaseCodePoint(codePoint))
-                    return true;
+                var emojiEnd = TryReadEmojiSequence(s, pos);
+                if (emojiEnd > pos)
+                {
+                    // Flush pending text
+                    if (textBuf.Length > 0)
+                    {
+                        tokens.Add(new Token { text = textBuf.ToString(), isEmoji = false });
+                        textBuf.Clear();
+                    }
+                    tokens.Add(new Token { text = s.Substring(pos, emojiEnd - pos), isEmoji = true });
+                    pos = emojiEnd;
+                }
+                else
+                {
+                    // Non-emoji character — accumulate into text buffer
+                    if (char.IsHighSurrogate(s[pos]) && pos + 1 < s.Length && char.IsLowSurrogate(s[pos + 1]))
+                    {
+                        textBuf.Append(s[pos]);
+                        textBuf.Append(s[pos + 1]);
+                        pos += 2;
+                    }
+                    else
+                    {
+                        textBuf.Append(s[pos]);
+                        pos++;
+                    }
+                }
             }
 
-            return false;
+            if (textBuf.Length > 0)
+                tokens.Add(new Token { text = textBuf.ToString(), isEmoji = false });
+
+            return tokens;
         }
 
-        static bool IsEmojiBaseCodePoint(int codePoint)
+        /// <summary>
+        /// Attempts to read a complete emoji sequence starting at <paramref name="start"/>.
+        /// Returns the end index (exclusive). If no emoji found, returns <paramref name="start"/>.
+        ///
+        /// Greedily consumes:
+        ///   base emoji → (variation selector)? → (skin tone)? → (ZWJ → next emoji component → ...)*
+        /// </summary>
+        static int TryReadEmojiSequence(string s, int start)
         {
-            return (codePoint >= 0x1F000 && codePoint <= 0x1FAFF) ||
-                   (codePoint >= 0x2600 && codePoint <= 0x27BF) ||
-                   (codePoint >= 0x2300 && codePoint <= 0x23FF) ||
-                   (codePoint >= 0x2B00 && codePoint <= 0x2BFF);
+            var pos = start;
+            var cp = ReadCodePoint(s, pos);
+            if (cp < 0 || !IsEmojiStartCodePoint(cp))
+                return start;
+
+            pos += CharCount(cp);
+
+            // Greedily consume modifiers and ZWJ continuations
+            while (pos < s.Length)
+            {
+                var next = ReadCodePoint(s, pos);
+                if (next < 0) break;
+
+                // Variation selectors (FE0E / FE0F)
+                if (next == 0xFE0E || next == 0xFE0F)
+                {
+                    pos += 1;
+                    continue;
+                }
+
+                // Skin tone modifiers (1F3FB–1F3FF)
+                if (next >= 0x1F3FB && next <= 0x1F3FF)
+                {
+                    pos += CharCount(next);
+                    continue;
+                }
+
+                // Combining Enclosing Keycap (20E3)
+                if (next == 0x20E3)
+                {
+                    pos += 1;
+                    continue;
+                }
+
+                // ZWJ → consume the next emoji component
+                if (next == 0x200D)
+                {
+                    var afterZwj = pos + 1; // ZWJ is BMP, 1 char
+                    if (afterZwj >= s.Length) break;
+
+                    var zwjTarget = ReadCodePoint(s, afterZwj);
+                    if (zwjTarget >= 0 && IsEmojiComponentCodePoint(zwjTarget))
+                    {
+                        pos = afterZwj + CharCount(zwjTarget);
+                        continue; // loop back to consume further modifiers / ZWJ chains
+                    }
+                    break; // ZWJ not followed by valid component — stop
+                }
+
+                break; // nothing more to consume
+            }
+
+            return pos > start + CharCount(ReadCodePoint(s, start)) ? pos : pos; // always return what we consumed
+        }
+
+        // ── Code point helpers ──
+
+        static int ReadCodePoint(string s, int index)
+        {
+            if (index >= s.Length) return -1;
+            if (char.IsHighSurrogate(s[index]) && index + 1 < s.Length && char.IsLowSurrogate(s[index + 1]))
+                return char.ConvertToUtf32(s[index], s[index + 1]);
+            return s[index];
+        }
+
+        static int CharCount(int codePoint) => codePoint > 0xFFFF ? 2 : 1;
+
+        /// <summary>
+        /// Code points that can START an emoji sequence.
+        /// </summary>
+        static bool IsEmojiStartCodePoint(int cp)
+        {
+            return IsEmojiBaseCodePoint(cp) || IsRegionalIndicator(cp);
+        }
+
+        /// <summary>
+        /// Code points valid after a ZWJ (broader than start — includes gender signs, etc.)
+        /// </summary>
+        static bool IsEmojiComponentCodePoint(int cp)
+        {
+            return IsEmojiBaseCodePoint(cp) ||
+                   cp == 0x2640 ||   // ♀ female sign
+                   cp == 0x2642 ||   // ♂ male sign
+                   cp == 0x2695 ||   // ⚕ medical symbol
+                   cp == 0x2696 ||   // ⚖ balance scale
+                   cp == 0x2708 ||   // ✈ airplane
+                   cp == 0x2764 ||   // ❤ heavy heart
+                   IsRegionalIndicator(cp);
+        }
+
+        static bool IsEmojiBaseCodePoint(int cp)
+        {
+            return (cp >= 0x1F000 && cp <= 0x1FAFF) || // emoticons, symbols, pictographs
+                   (cp >= 0x2600 && cp <= 0x27BF) ||   // misc symbols, dingbats
+                   (cp >= 0x2300 && cp <= 0x23FF) ||   // misc technical
+                   (cp >= 0x2B00 && cp <= 0x2BFF);     // misc symbols & arrows
+        }
+
+        static bool IsRegionalIndicator(int cp)
+        {
+            return cp >= 0x1F1E6 && cp <= 0x1F1FF;
+        }
+
+        struct Token
+        {
+            public string text;
+            public bool isEmoji;
         }
     }
 }

@@ -32,7 +32,7 @@ MonoBehaviour:
 
 
     Return your response as JSON.'
-  maxHistoryToSend: 0
+  maxHistoryToSend: 20
   useJsonSchema: 1
   schemaName: emoji_task_response
   jsonSchema: '{"type":"object","properties":{"messages":{"type":"array","items":{"type":"string"}},"task_intent":{"type":"string"}},"required":["messages","task_intent"],"additionalProperties":false}'

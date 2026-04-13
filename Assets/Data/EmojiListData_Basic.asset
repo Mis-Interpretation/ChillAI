@@ -25,3 +25,5 @@ MonoBehaviour:
     description: hug
   - emoji: "\U0001F44B"
     description: wave hand
+  - emoji: "\U0001F436"
+    description: dog

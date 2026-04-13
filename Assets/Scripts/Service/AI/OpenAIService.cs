@@ -106,7 +106,7 @@ namespace ChillAI.Service.AI
                 var response = await client.ChatEndpoint.GetCompletionAsync(request, ct);
                 var responseContent = response.FirstChoice.Message.Content.ToString();
 
-                Debug.Log($"[ChillAI] [{profile.agentId}] response ({response.Usage.TotalTokens} tokens): {responseContent}");
+                Debug.Log($"[ChillAI] [{profile.agentId}] response (prompt={response.Usage.PromptTokens}, completion={response.Usage.CompletionTokens}, total={response.Usage.TotalTokens}): {responseContent}");
 
                 return responseContent;
             }
