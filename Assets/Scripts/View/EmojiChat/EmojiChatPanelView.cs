@@ -21,6 +21,7 @@ namespace ChillAI.View.EmojiChat
         IConfigReader _configReader;
         UserSettingsService _userSettings;
         UiLayoutController _uiLayout;
+        EmojiPaletteData _emojiPalette;
 
         // UI elements
         Button _toggleBtn;
@@ -53,13 +54,15 @@ namespace ChillAI.View.EmojiChat
             EmojiChatController controller,
             IConfigReader configReader,
             UserSettingsService userSettings,
-            UiLayoutController uiLayout)
+            UiLayoutController uiLayout,
+            EmojiPaletteData emojiPalette)
         {
             _signalBus = signalBus;
             _controller = controller;
             _configReader = configReader;
             _userSettings = userSettings;
             _uiLayout = uiLayout;
+            _emojiPalette = emojiPalette;
         }
 
         void OnEnable()
@@ -199,7 +202,7 @@ namespace ChillAI.View.EmojiChat
                 AddBubble(msg, false);
 
             var toggleEmoji = TryGetToggleEmoji(signal.Messages);
-            if (!string.IsNullOrEmpty(toggleEmoji))
+            if (!string.IsNullOrEmpty(toggleEmoji) && toggleEmoji != _emojiPalette.placeholderEmoji)
                 _lastAiEmojiForToggle = toggleEmoji;
 
             RefreshToggleButtonVisual();
