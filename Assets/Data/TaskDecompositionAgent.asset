@@ -23,4 +23,4 @@ MonoBehaviour:
   maxHistoryToSend: 10
   useJsonSchema: 1
   schemaName: task_list
-  jsonSchema: '{"type":"object","properties":{"tasks":{"type":"array","items":{"type":"string"}}},"required":["tasks"],"additionalProperties":false}'
+  jsonSchema: '{"type":"object","properties":{"tasks":{"type":"array","items":{"type":"string"},"minItems":1,"maxItems":1}},"required":["tasks"],"additionalProperties":false}'

@@ -107,17 +107,16 @@ namespace ChillAI.Controller
                     "2. 如果用户提到的事情是某个已有任务的子任务（属于某个大任务的一部分），返回 action:\"add_subtask\"，" +
                     "并在 target_id 填写对应大任务的 id，title 填写子任务标题\n" +
                     "3. 只有当用户提到的事情和所有已有任务都无关时，才返回 action:\"create\"，" +
-                    "title 填写任务标题，subtasks 填写3个子任务（基于\"准备，执行，收尾\"的结构，每个15字以内）\n\n" +
-                    "使用中文填写 title 和 subtasks。Return ONLY a JSON object.";
+                    "title 只填写一个大任务标题，不要返回 subtasks\n\n" +
+                    "使用中文填写 title。Return ONLY a JSON object.";
                 _taskRouterProfile.useJsonSchema = true;
                 _taskRouterProfile.schemaName = "task_decision";
                 _taskRouterProfile.jsonSchema =
                     "{\"type\":\"object\",\"properties\":{" +
                     "\"action\":{\"type\":\"string\",\"enum\":[\"none\",\"create\",\"add_subtask\"]}," +
                     "\"target_id\":{\"type\":\"string\"}," +
-                    "\"title\":{\"type\":\"string\"}," +
-                    "\"subtasks\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}" +
-                    "},\"required\":[\"action\",\"target_id\",\"title\",\"subtasks\"],\"additionalProperties\":false}";
+                    "\"title\":{\"type\":\"string\"}" +
+                    "},\"required\":[\"action\",\"target_id\",\"title\"],\"additionalProperties\":false}";
                 return _taskRouterProfile;
             }
         }
@@ -222,13 +221,10 @@ namespace ChillAI.Controller
                         if (!string.IsNullOrWhiteSpace(decision.title))
                         {
                             var id = _taskController.CreateBigEvent(decision.title);
-                            if (id != null && decision.subtasks is { Count: > 0 })
-                            {
-                                foreach (var sub in decision.subtasks)
-                                    _taskController.AddSubTask(id, sub);
-                            }
+                            if (id != null)
+                                _taskController.RequestDecomposition(id);
                             _signalBus.Fire(new TaskAddedViaChatSignal(id));
-                            Debug.Log($"[ChillAI] [task-router] Created: \"{decision.title}\" with {decision.subtasks?.Count ?? 0} subtasks");
+                            Debug.Log($"[ChillAI] [task-router] Created: \"{decision.title}\" and delegated decomposition.");
                         }
                         break;
 
