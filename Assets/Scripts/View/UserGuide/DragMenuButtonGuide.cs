@@ -55,7 +55,7 @@ namespace ChillAI.View.UserGuide
             }
 
             _bubble = new TextBubble(GuideText);
-            _bubble.AnchorAbove(sysMenu.MenuButton, gap: 12f);
+            _bubble.AnchorAbove(sysMenu.MenuButton, gap: 12f, horizontalAnchor: TextBubble.HorizontalAnchor.Right);
 
             _manipulator = sysMenu.MenuDragManipulator;
             _manipulator.DragStarted += OnMenuDragStarted;

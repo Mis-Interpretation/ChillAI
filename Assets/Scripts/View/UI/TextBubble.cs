@@ -13,6 +13,12 @@ namespace ChillAI.View.UI
     /// </summary>
     public class TextBubble : VisualElement
     {
+        public enum HorizontalAnchor
+        {
+            Center,
+            Right
+        }
+
         const long DefaultShowDelayMs = 3000;
         const long ExitAnimationMs = 280;
         const float TransitionDurationSec = 0.22f;
@@ -142,18 +148,39 @@ namespace ChillAI.View.UI
         }
 
         /// <summary>
-        /// Anchor the bubble centered above <paramref name="anchor"/>.
+        /// Anchor the bubble above <paramref name="anchor"/>.
         /// The bubble becomes a child of the anchor so it moves together with it.
         /// </summary>
-        public TextBubble AnchorAbove(VisualElement anchor, float gap = 8f)
+        public TextBubble AnchorAbove(VisualElement anchor, float gap = 8f, HorizontalAnchor horizontalAnchor = HorizontalAnchor.Center)
         {
             if (anchor == null) return this;
 
             anchor.Add(this);
-            style.left = Length.Percent(50);
             style.bottom = Length.Percent(100);
             style.marginBottom = gap;
-            style.translate = new StyleTranslate(new Translate(Length.Percent(-50), 0));
+
+            if (horizontalAnchor == HorizontalAnchor.Right)
+            {
+                style.left = StyleKeyword.Auto;
+                style.right = 0;
+                style.translate = new StyleTranslate(new Translate(0, 0));
+
+                _label.style.unityTextAlign = TextAnchor.MiddleRight;
+                _tail.style.left = StyleKeyword.Auto;
+                _tail.style.right = 16;
+                _tail.style.translate = new StyleTranslate(new Translate(0, 0));
+            }
+            else
+            {
+                style.left = Length.Percent(50);
+                style.right = StyleKeyword.Auto;
+                style.translate = new StyleTranslate(new Translate(Length.Percent(-50), 0));
+
+                _label.style.unityTextAlign = TextAnchor.MiddleCenter;
+                _tail.style.left = Length.Percent(50);
+                _tail.style.right = StyleKeyword.Auto;
+                _tail.style.translate = new StyleTranslate(new Translate(Length.Percent(-50), 0));
+            }
 
             DeferShow();
             return this;
