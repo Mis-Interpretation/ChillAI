@@ -95,6 +95,38 @@ namespace ChillAI.View.UI
             Add(_tail);
         }
 
+        /// <summary>
+        /// Matches EmojiChatPanel.uss AI bubble visual style.
+        /// Useful for popup emoji bubbles that should look identical to chat panel bubbles.
+        /// </summary>
+        public TextBubble ApplyChatPanelAiBubbleStyle(bool hideTail = true)
+        {
+            style.maxWidth = 220;
+
+            _body.style.paddingTop = 8;
+            _body.style.paddingBottom = 8;
+            _body.style.paddingLeft = 12;
+            _body.style.paddingRight = 12;
+            _body.style.backgroundColor = new Color(1f, 1f, 1f, 0.08f);
+            _body.style.borderTopLeftRadius = 12;
+            _body.style.borderTopRightRadius = 12;
+            _body.style.borderBottomLeftRadius = 4;
+            _body.style.borderBottomRightRadius = 12;
+            _body.style.borderTopWidth = 0;
+            _body.style.borderBottomWidth = 0;
+            _body.style.borderLeftWidth = 0;
+            _body.style.borderRightWidth = 0;
+
+            _label.style.color = Color.white;
+            _label.style.fontSize = 28;
+            _label.style.unityTextAlign = TextAnchor.MiddleCenter;
+
+            if (hideTail)
+                _tail.style.display = DisplayStyle.None;
+
+            return this;
+        }
+
         public string Text
         {
             get => _label.text;

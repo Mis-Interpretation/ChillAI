@@ -526,6 +526,7 @@ namespace ChillAI.View.EmojiChat
             var entry = new ToggleEmojiBubbleEntry
             {
                 Bubble = new TextBubble(emojiText, showDelayMs: 0, useAbsolutePosition: false)
+                    .ApplyChatPanelAiBubbleStyle(hideTail: true)
             };
 
             _activeToggleEmojiBubbles.Add(entry); // Newest bubble is appended to bottom in vertical stack.
