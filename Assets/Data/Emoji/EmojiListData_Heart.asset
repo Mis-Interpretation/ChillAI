@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3418b889c8ef734ebf6dca64f4ffb65, type: 3}
   m_Name: EmojiListData_Heart
   m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.EmojiListData
-  listId: unnamed
+  listId: heart
   displayName: Emoji Group
   emojis:
   - emoji: "\u2764\uFE0F"

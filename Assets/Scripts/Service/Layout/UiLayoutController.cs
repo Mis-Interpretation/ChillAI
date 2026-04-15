@@ -217,6 +217,7 @@ namespace ChillAI.Service.Layout
             _contextId = id;
             _file      = ReadFile();
             _snapshot  = FindEntry(_file, id) ?? new UiLayoutSnapshot();
+            NormalizeHudRootPositions(_snapshot);
             _loaded    = true;
         }
 
@@ -384,6 +385,7 @@ namespace ChillAI.Service.Layout
                 ref _snapshot.taskRootX, ref _snapshot.taskRootY);
             CaptureTransform(_profileRoot, ref _snapshot.hasProfileRoot,
                 ref _snapshot.profileRootX, ref _snapshot.profileRootY);
+            NormalizeHudRootPositions(_snapshot);
 
             CapturePanelLayout(_chatPanel,
                 ref _snapshot.hasChatPanel,
@@ -435,6 +437,77 @@ namespace ChillAI.Service.Layout
             outW    = R(wb.width);
             outH    = R(wb.height);
             hasFlag = true;
+        }
+
+        static void NormalizeHudRootPositions(UiLayoutSnapshot snapshot)
+        {
+            if (snapshot == null) return;
+            if (!TryGetSharedHudRootPosition(snapshot, out var sharedX, out var sharedY)) return;
+
+            sharedX = R(sharedX);
+            sharedY = R(sharedY);
+
+            snapshot.hasMenuWrapper = true;
+            snapshot.menuWrapperX = sharedX;
+            snapshot.menuWrapperY = sharedY;
+
+            snapshot.hasChatRoot = true;
+            snapshot.chatRootX = sharedX;
+            snapshot.chatRootY = sharedY;
+
+            snapshot.hasTaskRoot = true;
+            snapshot.taskRootX = sharedX;
+            snapshot.taskRootY = sharedY;
+
+            if (snapshot.hasProfileRoot)
+            {
+                snapshot.profileRootX = sharedX;
+                snapshot.profileRootY = sharedY;
+            }
+        }
+
+        static bool TryGetSharedHudRootPosition(UiLayoutSnapshot snapshot, out float x, out float y)
+        {
+            if (snapshot.hasChatRoot && snapshot.hasTaskRoot &&
+                Mathf.Abs(snapshot.chatRootX - snapshot.taskRootX) <= 1f &&
+                Mathf.Abs(snapshot.chatRootY - snapshot.taskRootY) <= 1f)
+            {
+                x = (snapshot.chatRootX + snapshot.taskRootX) * 0.5f;
+                y = (snapshot.chatRootY + snapshot.taskRootY) * 0.5f;
+                return true;
+            }
+
+            if (snapshot.hasMenuWrapper)
+            {
+                x = snapshot.menuWrapperX;
+                y = snapshot.menuWrapperY;
+                return true;
+            }
+
+            if (snapshot.hasChatRoot)
+            {
+                x = snapshot.chatRootX;
+                y = snapshot.chatRootY;
+                return true;
+            }
+
+            if (snapshot.hasTaskRoot)
+            {
+                x = snapshot.taskRootX;
+                y = snapshot.taskRootY;
+                return true;
+            }
+
+            if (snapshot.hasProfileRoot)
+            {
+                x = snapshot.profileRootX;
+                y = snapshot.profileRootY;
+                return true;
+            }
+
+            x = 0f;
+            y = 0f;
+            return false;
         }
 
         static float R(float v) => (float)Math.Round(v, 3);

@@ -14,7 +14,8 @@ namespace ChillAI.View.Window
     /// </summary>
     public class WindowDragManipulator : Manipulator
     {
-        readonly VisualElement[] _moveTargets;
+        readonly VisualElement _primaryMoveTarget;
+        readonly List<VisualElement> _alsoMoveTargets = new();
         readonly float _dragThreshold;
 
         bool _isPointerDown;
@@ -37,18 +38,33 @@ namespace ChillAI.View.Window
             float dragThreshold = 0f,
             VisualElement[] alsoMove = null)
         {
+            _primaryMoveTarget = moveTarget;
             _dragThreshold = dragThreshold;
+            SetAlsoMoveTargets(alsoMove);
+        }
 
-            var list = new List<VisualElement> { moveTarget };
-            if (alsoMove != null)
+        public void SetAlsoMoveTargets(params VisualElement[] alsoMove)
+        {
+            _alsoMoveTargets.Clear();
+            if (alsoMove == null) return;
+
+            foreach (var e in alsoMove)
             {
-                foreach (var e in alsoMove)
-                {
-                    if (e != null) list.Add(e);
-                }
+                if (e == null || e == _primaryMoveTarget || _alsoMoveTargets.Contains(e))
+                    continue;
+                _alsoMoveTargets.Add(e);
             }
+        }
 
-            _moveTargets = list.ToArray();
+        int MoveTargetCount => 1 + _alsoMoveTargets.Count;
+
+        VisualElement GetMoveTargetAt(int index)
+        {
+            if (index == 0) return _primaryMoveTarget;
+            var alsoIndex = index - 1;
+            return alsoIndex >= 0 && alsoIndex < _alsoMoveTargets.Count
+                ? _alsoMoveTargets[alsoIndex]
+                : null;
         }
 
         protected override void RegisterCallbacksOnTarget()
@@ -170,9 +186,12 @@ namespace ChillAI.View.Window
             _mouseScreenStart = Input.mousePosition;
 
 #pragma warning disable CS0618
-            _startPositions = new Vector3[_moveTargets.Length];
-            for (var i = 0; i < _moveTargets.Length; i++)
-                _startPositions[i] = _moveTargets[i].transform.position;
+            _startPositions = new Vector3[MoveTargetCount];
+            for (var i = 0; i < MoveTargetCount; i++)
+            {
+                var moveTarget = GetMoveTargetAt(i);
+                _startPositions[i] = moveTarget != null ? moveTarget.transform.position : Vector3.zero;
+            }
 #pragma warning restore CS0618
 
             _isPointerDown = true;
@@ -208,15 +227,15 @@ namespace ChillAI.View.Window
 
             // One delta for every UITK root: separate UIDocument panels can map the same mouse motion to
             // slightly different vectors — using per-panel d made menu / chat / task drift apart while dragging.
-            var refPanel = _moveTargets[0].panel;
+            var refPanel = _primaryMoveTarget?.panel;
             var dShared = refPanel != null
                 ? PointerPanelDeltaFromMouse(refPanel, _mouseScreenStart, mouseNow)
                 : Vector2.zero;
 
-            for (var i = 0; i < _moveTargets.Length; i++)
+            for (var i = 0; i < MoveTargetCount; i++)
             {
-                var t = _moveTargets[i];
-                if (t.panel == null) continue;
+                var t = GetMoveTargetAt(i);
+                if (t == null || t.panel == null) continue;
 
                 var s = _startPositions[i];
                 var desired = new Vector3(s.x + dShared.x, s.y + dShared.y, s.z);

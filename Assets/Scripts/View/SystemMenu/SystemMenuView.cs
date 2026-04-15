@@ -75,17 +75,17 @@ namespace ChillAI.View.SystemMenu
 
             _signalBus?.Subscribe<ActiveProcessChangedSignal>(OnActiveProcessChanged);
 
-            // Move Chat + Task HUD roots with the system menu (same delta as menu wrapper).
-            var companions = CollectHudCompanionRoots();
-
             // Menu button: hold to drag entire menu, click to toggle menu
             _dragManipulator = new WindowDragManipulator(
                 _wrapper,
                 dragThreshold: 5f,
-                alsoMove: companions.ToArray());
+                alsoMove: CollectHudCompanionRoots().ToArray());
             _dragManipulator.OnClicked += ToggleMenu;
             _dragManipulator.DragEnded += OnHudLayoutChanged;
             _menuBtn.AddManipulator(_dragManipulator);
+            RefreshMenuCompanionRoots();
+            root.schedule.Execute(RefreshMenuCompanionRoots).StartingIn(16);
+            root.schedule.Execute(RefreshMenuCompanionRoots).StartingIn(250);
 
             // Menu items
             root.Q<Button>("settings-btn").clicked += OpenSettings;
@@ -158,6 +158,12 @@ namespace ChillAI.View.SystemMenu
             }
 
             return list;
+        }
+
+        void RefreshMenuCompanionRoots()
+        {
+            if (_dragManipulator == null) return;
+            _dragManipulator.SetAlsoMoveTargets(CollectHudCompanionRoots().ToArray());
         }
 
         void OnDisable()
