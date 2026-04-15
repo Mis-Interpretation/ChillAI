@@ -2070,6 +2070,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d01ea5db0bcd4a46baca88397e33158, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChillAI.View.EmojiChat.EmojiChatPanelView
+  toggleEmojiFirstBubbleDelaySeconds: 2
+  toggleEmojiSpawnIntervalSeconds: 0.5
+  toggleEmojiBubbleLifetimeSeconds: 2.6
+  toggleEmojiBubbleBaseGap: 12
+  toggleEmojiBubbleVerticalSpacing: 10
 --- !u!1 &1734705337
 GameObject:
   m_ObjectHideFlags: 0

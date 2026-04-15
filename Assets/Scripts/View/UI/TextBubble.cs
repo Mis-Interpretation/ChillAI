@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -12,7 +13,7 @@ namespace ChillAI.View.UI
     /// </summary>
     public class TextBubble : VisualElement
     {
-        const long ShowDelayMs = 3000;
+        const long DefaultShowDelayMs = 3000;
         const long ExitAnimationMs = 280;
         const float TransitionDurationSec = 0.22f;
 
@@ -23,15 +24,17 @@ namespace ChillAI.View.UI
         readonly VisualElement _body;
         readonly Label _label;
         readonly VisualElement _tail;
+        readonly long _showDelayMs;
         bool _dismissed;
         bool _shown;
 
-        public TextBubble(string text)
+        public TextBubble(string text, long showDelayMs = DefaultShowDelayMs, bool useAbsolutePosition = true)
         {
             pickingMode = PickingMode.Ignore;
+            _showDelayMs = Math.Max(0L, showDelayMs);
 
             // Root — no background, just a positioning container
-            style.position = Position.Absolute;
+            style.position = useAbsolutePosition ? Position.Absolute : Position.Relative;
             style.maxWidth = 320;
             style.opacity = 0;
             style.scale = new StyleScale(new Scale(new Vector3(0.6f, 0.6f, 1f)));
@@ -145,7 +148,7 @@ namespace ChillAI.View.UI
                     style.opacity = 1;
                     style.scale = new StyleScale(new Scale(Vector3.one));
                 }
-            }).StartingIn(ShowDelayMs);
+            }).StartingIn(_showDelayMs);
         }
     }
 }

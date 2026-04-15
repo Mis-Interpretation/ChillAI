@@ -3,6 +3,7 @@ using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Service.Layout;
+using ChillAI.View.UI;
 using ChillAI.View.Window;
 using System;
 using System.Collections.Generic;
@@ -45,8 +46,25 @@ namespace ChillAI.View.EmojiChat
         WindowDragManipulator _dragManipulator;
         PanelResizeManipulator _resizeManipulator;
         VisualElement _resizeHandle;
+        VisualElement _toggleEmojiBubbleStack;
+        readonly List<ToggleEmojiBubbleEntry> _activeToggleEmojiBubbles = new();
+        Coroutine _toggleEmojiSpawnCoroutine;
         string _lastErrorMessage;
         float _lastErrorShownAt = -100f;
+
+        [Header("Toggle Emoji Bubble")]
+        [SerializeField] bool enableToggleEmojiBubbles = true;
+        [SerializeField, Min(0f)] float toggleEmojiFirstBubbleDelaySeconds = 0f;
+        [SerializeField, Min(0f)] float toggleEmojiSpawnIntervalSeconds = 0.16f;
+        [SerializeField, Min(0f)] float toggleEmojiBubbleLifetimeSeconds = 2.6f;
+        [SerializeField, Min(0f)] float toggleEmojiBubbleBaseGap = 12f;
+        [SerializeField, Min(0f)] float toggleEmojiBubbleVerticalSpacing = 8f;
+
+        class ToggleEmojiBubbleEntry
+        {
+            public TextBubble Bubble;
+            public IVisualElementScheduledItem DismissTask;
+        }
 
         [Inject]
         public void Construct(
@@ -106,6 +124,7 @@ namespace ChillAI.View.EmojiChat
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
+            EnsureToggleEmojiBubbleStack();
             UpdateStatus();
             RefreshToggleButtonVisual();
         }
@@ -131,6 +150,7 @@ namespace ChillAI.View.EmojiChat
             _uiLayout?.UnregisterChatHudRoot();
             _uiLayout?.UnregisterChatPanel();
 
+            ClearToggleEmojiBubbles();
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiResponse);
         }
 
@@ -205,6 +225,7 @@ namespace ChillAI.View.EmojiChat
             if (!string.IsNullOrEmpty(toggleEmoji) && toggleEmoji != _emojiPalette.placeholderEmoji)
                 _lastAiEmojiForToggle = toggleEmoji;
 
+            ShowToggleEmojiBubbles(signal.Messages);
             RefreshToggleButtonVisual();
         }
 
@@ -259,6 +280,71 @@ namespace ChillAI.View.EmojiChat
             return null;
         }
 
+        List<string> TryGetToggleBubbleEmojis(IReadOnlyList<string> messages)
+        {
+            var result = new List<string>();
+            if (messages == null || messages.Count == 0)
+                return result;
+
+            for (var i = 0; i < messages.Count; i++)
+            {
+                var content = messages[i]?.Trim();
+                if (string.IsNullOrEmpty(content) || IsTaskMarker(content))
+                    continue;
+
+                var emojis = ExtractEmojis(content);
+                EnsurePlaceholderEmojisIncluded(content, emojis);
+                if (emojis.Count > 0)
+                    result.AddRange(emojis);
+            }
+
+            return result;
+        }
+
+        void EnsurePlaceholderEmojisIncluded(string content, List<string> emojis)
+        {
+            if (string.IsNullOrEmpty(content) || emojis == null)
+                return;
+
+            var placeholder = _emojiPalette?.placeholderEmoji;
+            if (string.IsNullOrEmpty(placeholder))
+                return;
+
+            var totalPlaceholderCount = CountOccurrences(content, placeholder);
+            if (totalPlaceholderCount <= 0)
+                return;
+
+            var existingPlaceholderCount = 0;
+            for (var i = 0; i < emojis.Count; i++)
+            {
+                if (string.Equals(emojis[i], placeholder, StringComparison.Ordinal))
+                    existingPlaceholderCount++;
+            }
+
+            for (var i = existingPlaceholderCount; i < totalPlaceholderCount; i++)
+                emojis.Add(placeholder);
+        }
+
+        static int CountOccurrences(string text, string value)
+        {
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(value))
+                return 0;
+
+            var count = 0;
+            var index = 0;
+            while (index <= text.Length - value.Length)
+            {
+                var found = text.IndexOf(value, index, StringComparison.Ordinal);
+                if (found < 0)
+                    break;
+
+                count++;
+                index = found + value.Length;
+            }
+
+            return count;
+        }
+
         static bool IsTaskMarker(string content)
         {
             if (string.IsNullOrWhiteSpace(content))
@@ -308,6 +394,23 @@ namespace ChillAI.View.EmojiChat
             }
 
             return null;
+        }
+
+        static List<string> ExtractEmojis(string content)
+        {
+            var result = new List<string>();
+            if (string.IsNullOrWhiteSpace(content))
+                return result;
+
+            var enumerator = StringInfo.GetTextElementEnumerator(content);
+            while (enumerator.MoveNext())
+            {
+                var textElement = enumerator.GetTextElement();
+                if (IsEmojiTextElement(textElement))
+                    result.Add(NormalizeEmojiForToggle(textElement));
+            }
+
+            return result;
         }
 
         static bool IsEmojiTextElement(string textElement)
@@ -376,6 +479,132 @@ namespace ChillAI.View.EmojiChat
                 _chatMessages.scrollOffset = new Vector2(0, _chatMessages.contentContainer.layout.height);
             }
             _chatMessages.contentContainer.RegisterCallback<GeometryChangedEvent>(ScrollToBottom);
+        }
+
+        void ShowToggleEmojiBubbles(IReadOnlyList<string> messages)
+        {
+            if (_toggleBtn == null)
+                return;
+
+            if (!enableToggleEmojiBubbles)
+            {
+                ClearToggleEmojiBubbles();
+                return;
+            }
+
+            var emojis = TryGetToggleBubbleEmojis(messages);
+            if (emojis.Count == 0)
+                return;
+
+            if (_toggleEmojiSpawnCoroutine != null)
+                StopCoroutine(_toggleEmojiSpawnCoroutine);
+            _toggleEmojiSpawnCoroutine = StartCoroutine(SpawnToggleEmojiBubbles(emojis));
+        }
+
+        System.Collections.IEnumerator SpawnToggleEmojiBubbles(List<string> emojis)
+        {
+            var firstDelay = Mathf.Max(0f, toggleEmojiFirstBubbleDelaySeconds);
+            var delay = Mathf.Max(0f, toggleEmojiSpawnIntervalSeconds);
+            if (firstDelay > 0f)
+                yield return new WaitForSecondsRealtime(firstDelay);
+
+            for (var i = 0; i < emojis.Count; i++)
+            {
+                CreateToggleEmojiBubble(emojis[i]);
+                if (i < emojis.Count - 1 && delay > 0f)
+                    yield return new WaitForSecondsRealtime(delay);
+            }
+
+            _toggleEmojiSpawnCoroutine = null;
+        }
+
+        void CreateToggleEmojiBubble(string emojiText)
+        {
+            if (string.IsNullOrWhiteSpace(emojiText) || !EnsureToggleEmojiBubbleStack())
+                return;
+
+            var entry = new ToggleEmojiBubbleEntry
+            {
+                Bubble = new TextBubble(emojiText, showDelayMs: 0, useAbsolutePosition: false)
+            };
+
+            _activeToggleEmojiBubbles.Add(entry); // Newest bubble is appended to bottom in vertical stack.
+            entry.Bubble.Attach(_toggleEmojiBubbleStack);
+            RefreshToggleEmojiBubbleStackSpacing();
+
+            var lifetimeMs = Mathf.RoundToInt(Mathf.Max(0f, toggleEmojiBubbleLifetimeSeconds) * 1000f);
+            entry.DismissTask = _toggleBtn.schedule.Execute(() => DismissToggleEmojiBubbleEntry(entry))
+                .StartingIn(lifetimeMs);
+        }
+
+        void DismissToggleEmojiBubbleEntry(ToggleEmojiBubbleEntry entry)
+        {
+            if (entry == null)
+                return;
+
+            entry.DismissTask?.Pause();
+            entry.DismissTask = null;
+            entry.Bubble?.Dismiss();
+            _activeToggleEmojiBubbles.Remove(entry);
+            RefreshToggleEmojiBubbleStackSpacing();
+        }
+
+        bool EnsureToggleEmojiBubbleStack()
+        {
+            if (_toggleBtn == null)
+                return false;
+
+            if (_toggleEmojiBubbleStack != null && _toggleEmojiBubbleStack.parent == _toggleBtn)
+                return true;
+
+            _toggleEmojiBubbleStack = new VisualElement
+            {
+                pickingMode = PickingMode.Ignore
+            };
+            _toggleEmojiBubbleStack.style.position = Position.Absolute;
+            _toggleEmojiBubbleStack.style.left = Length.Percent(50);
+            _toggleEmojiBubbleStack.style.bottom = Length.Percent(100);
+            _toggleEmojiBubbleStack.style.marginBottom = toggleEmojiBubbleBaseGap;
+            _toggleEmojiBubbleStack.style.translate = new StyleTranslate(new Translate(Length.Percent(-50), 0));
+            _toggleEmojiBubbleStack.style.flexDirection = FlexDirection.Column;
+            _toggleEmojiBubbleStack.style.alignItems = Align.Center;
+            _toggleEmojiBubbleStack.style.justifyContent = Justify.FlexStart;
+
+            _toggleBtn.Add(_toggleEmojiBubbleStack);
+            return true;
+        }
+
+        void RefreshToggleEmojiBubbleStackSpacing()
+        {
+            for (var i = 0; i < _activeToggleEmojiBubbles.Count; i++)
+            {
+                var bubble = _activeToggleEmojiBubbles[i].Bubble;
+                if (bubble == null)
+                    continue;
+
+                bubble.style.marginTop = i == 0 ? 0f : toggleEmojiBubbleVerticalSpacing;
+            }
+        }
+
+        void ClearToggleEmojiBubbles()
+        {
+            if (_toggleEmojiSpawnCoroutine != null)
+            {
+                StopCoroutine(_toggleEmojiSpawnCoroutine);
+                _toggleEmojiSpawnCoroutine = null;
+            }
+
+            for (var i = 0; i < _activeToggleEmojiBubbles.Count; i++)
+            {
+                var entry = _activeToggleEmojiBubbles[i];
+                entry.DismissTask?.Pause();
+                entry.DismissTask = null;
+                entry.Bubble?.Dismiss();
+            }
+
+            _activeToggleEmojiBubbles.Clear();
+            _toggleEmojiBubbleStack?.RemoveFromHierarchy();
+            _toggleEmojiBubbleStack = null;
         }
 
         void UpdateStatus()
