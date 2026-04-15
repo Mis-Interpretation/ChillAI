@@ -1,18 +1,18 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/EmojiChatPanel.uss?fileID=7433441132597879392&amp;guid=d6d03836cab5fae45925744f636bb4d9&amp;type=3#EmojiChatPanel"/>
     <ui:VisualElement name="chat-panel" class="chat-panel hidden" style="translate: 0 -25px;">
-        <ui:VisualElement class="chat-panel-header">
-            <ui:Label text="Chat" class="chat-panel-title"/>
-            <ui:Button name="chat-close-btn" text="✕" class="chat-close-btn"/>
-        </ui:VisualElement>
-        <ui:ScrollView name="chat-messages" class="chat-messages"/>
-        <ui:Label name="chat-status-label" class="chat-status-label"/>
-        <ui:Label name="chat-loading-label" text="..." class="chat-loading-label hidden"/>
         <ui:VisualElement class="chat-input-row">
             <ui:TextField name="chat-input" multiline="true" class="chat-input"/>
             <ui:Button name="chat-send-btn" text="Send" class="chat-send-btn"/>
         </ui:VisualElement>
-        <ui:VisualElement name="chat-resize-handle" class="panel-resize-handle"/>
+    </ui:VisualElement>
+    <ui:VisualElement name="chat-history-panel" class="chat-history-panel hidden" style="translate: 0 -25px;">
+        <ui:VisualElement class="chat-history-panel-header">
+            <ui:Label text="Chat History" class="chat-history-panel-title"/>
+            <ui:Button name="chat-history-close-btn" text="✕" class="chat-history-close-btn"/>
+        </ui:VisualElement>
+        <ui:ScrollView name="chat-history-messages" class="chat-history-messages"/>
+        <ui:VisualElement name="chat-history-resize-handle" class="panel-resize-handle"/>
     </ui:VisualElement>
     <ui:Button name="chat-toggle-btn" text="💬" class="chat-toggle-btn" style="translate: 0 -25px;"/>
 </ui:UXML>

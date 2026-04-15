@@ -31,9 +31,11 @@ namespace ChillAI.Service.Layout
         VisualElement _chatRoot;
         VisualElement _taskRoot;
         VisualElement _profileRoot;
+        VisualElement _chatHistoryRoot;
         VisualElement _chatPanel;
         VisualElement _taskPanel;
         VisualElement _profilePanel;
+        VisualElement _chatHistoryPanel;
 
         float _lastSaveTime = float.MinValue;
         bool _savePending;
@@ -76,6 +78,13 @@ namespace ChillAI.Service.Layout
             ApplyProfileRoot();
         }
 
+        public void RegisterChatHistoryHudRoot(VisualElement root)
+        {
+            _chatHistoryRoot = root;
+            EnsureLoaded();
+            ApplyChatHistoryRoot();
+        }
+
         /// <summary>
         /// Register the chat panel. Layout is applied on the next scheduler tick
         /// so that UIElements has already computed geometry before we read it.
@@ -105,13 +114,22 @@ namespace ChillAI.Service.Layout
             panel.schedule.Execute(() => ApplyProfilePanel(panel));
         }
 
+        public void RegisterChatHistoryPanel(VisualElement panel)
+        {
+            _chatHistoryPanel = panel;
+            EnsureLoaded();
+            panel.schedule.Execute(() => ApplyChatHistoryPanel(panel));
+        }
+
         public void UnregisterMenuWrapper()   => _menuWrapper = null;
         public void UnregisterChatHudRoot()   => _chatRoot    = null;
         public void UnregisterTaskHudRoot()   => _taskRoot    = null;
         public void UnregisterProfileHudRoot() => _profileRoot = null;
+        public void UnregisterChatHistoryHudRoot() => _chatHistoryRoot = null;
         public void UnregisterChatPanel()     => _chatPanel   = null;
         public void UnregisterTaskPanel()     => _taskPanel   = null;
         public void UnregisterProfilePanel()  => _profilePanel = null;
+        public void UnregisterChatHistoryPanel() => _chatHistoryPanel = null;
 
         // ── Column ratio ──────────────────────────────────────────────────────────
 
@@ -145,9 +163,11 @@ namespace ChillAI.Service.Layout
             ApplyChatRoot();
             ApplyTaskRoot();
             ApplyProfileRoot();
+            ApplyChatHistoryRoot();
             if (_chatPanel != null) _chatPanel.schedule.Execute(() => ApplyChatPanel(_chatPanel));
             if (_taskPanel != null) _taskPanel.schedule.Execute(() => ApplyTaskPanel(_taskPanel));
             if (_profilePanel != null) _profilePanel.schedule.Execute(() => ApplyProfilePanel(_profilePanel));
+            if (_chatHistoryPanel != null) _chatHistoryPanel.schedule.Execute(() => ApplyChatHistoryPanel(_chatHistoryPanel));
         }
 
         // ── Window bounds ─────────────────────────────────────────────────────────
@@ -174,7 +194,7 @@ namespace ChillAI.Service.Layout
             _savePending = true;
 
             // Use any live panel to post the deferred write via UIElements scheduler.
-            var scheduler = (_profilePanel ?? _taskPanel ?? _chatPanel ?? _menuWrapper)?.schedule;
+            var scheduler = (_chatHistoryPanel ?? _profilePanel ?? _taskPanel ?? _chatPanel ?? _menuWrapper)?.schedule;
             if (scheduler == null)
             {
                 // No panel yet — just write immediately.
@@ -314,6 +334,15 @@ namespace ChillAI.Service.Layout
 #pragma warning restore CS0618
         }
 
+        void ApplyChatHistoryRoot()
+        {
+            if (_chatHistoryRoot == null || _snapshot == null || !_snapshot.hasChatHistoryRoot) return;
+#pragma warning disable CS0618
+            _chatHistoryRoot.transform.position = new Vector3(
+                _snapshot.chatHistoryRootX, _snapshot.chatHistoryRootY, 0f);
+#pragma warning restore CS0618
+        }
+
         void ApplyChatPanel(VisualElement panel)
         {
             if (panel == null || _snapshot == null || !_snapshot.hasChatPanel) return;
@@ -336,6 +365,14 @@ namespace ChillAI.Service.Layout
             if (!IsValidSize(_snapshot.profilePanelW, _snapshot.profilePanelH)) return;
             PlacePanel(panel, _snapshot.profilePanelLeft, _snapshot.profilePanelTop,
                 _snapshot.profilePanelW, _snapshot.profilePanelH);
+        }
+
+        void ApplyChatHistoryPanel(VisualElement panel)
+        {
+            if (panel == null || _snapshot == null || !_snapshot.hasChatHistoryPanel) return;
+            if (!IsValidSize(_snapshot.chatHistoryPanelW, _snapshot.chatHistoryPanelH)) return;
+            PlacePanel(panel, _snapshot.chatHistoryPanelLeft, _snapshot.chatHistoryPanelTop,
+                _snapshot.chatHistoryPanelW, _snapshot.chatHistoryPanelH);
         }
 
         static bool IsValidSize(float w, float h)
@@ -385,6 +422,8 @@ namespace ChillAI.Service.Layout
                 ref _snapshot.taskRootX, ref _snapshot.taskRootY);
             CaptureTransform(_profileRoot, ref _snapshot.hasProfileRoot,
                 ref _snapshot.profileRootX, ref _snapshot.profileRootY);
+            CaptureTransform(_chatHistoryRoot, ref _snapshot.hasChatHistoryRoot,
+                ref _snapshot.chatHistoryRootX, ref _snapshot.chatHistoryRootY);
             NormalizeHudRootPositions(_snapshot);
 
             CapturePanelLayout(_chatPanel,
@@ -401,6 +440,11 @@ namespace ChillAI.Service.Layout
                 ref _snapshot.hasProfilePanel,
                 ref _snapshot.profilePanelLeft, ref _snapshot.profilePanelTop,
                 ref _snapshot.profilePanelW,    ref _snapshot.profilePanelH);
+
+            CapturePanelLayout(_chatHistoryPanel,
+                ref _snapshot.hasChatHistoryPanel,
+                ref _snapshot.chatHistoryPanelLeft, ref _snapshot.chatHistoryPanelTop,
+                ref _snapshot.chatHistoryPanelW,    ref _snapshot.chatHistoryPanelH);
         }
 
         static void CaptureTransform(VisualElement el,
@@ -464,6 +508,12 @@ namespace ChillAI.Service.Layout
                 snapshot.profileRootX = sharedX;
                 snapshot.profileRootY = sharedY;
             }
+
+            if (snapshot.hasChatHistoryRoot)
+            {
+                snapshot.chatHistoryRootX = sharedX;
+                snapshot.chatHistoryRootY = sharedY;
+            }
         }
 
         static bool TryGetSharedHudRootPosition(UiLayoutSnapshot snapshot, out float x, out float y)
@@ -502,6 +552,13 @@ namespace ChillAI.Service.Layout
             {
                 x = snapshot.profileRootX;
                 y = snapshot.profileRootY;
+                return true;
+            }
+
+            if (snapshot.hasChatHistoryRoot)
+            {
+                x = snapshot.chatHistoryRootX;
+                y = snapshot.chatHistoryRootY;
                 return true;
             }
 

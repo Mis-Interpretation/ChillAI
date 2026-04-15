@@ -436,7 +436,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 502, y: -385}
+  m_AnchoredPosition: {x: 538, y: -385}
   m_SizeDelta: {x: 288, y: 288}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &152889811
@@ -456,7 +456,7 @@ MonoBehaviour:
   targetElementClass: 
   anchorMode: 4
   screenOffset: {x: 0, y: 0}
-  keepInitialRelativeOffset: 1
+  keepInitialRelativeOffset: 0
   hideWhenTargetMissing: 1
   followEvenWhenInactive: 1
 --- !u!1 &233201871
@@ -2070,6 +2070,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d01ea5db0bcd4a46baca88397e33158, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChillAI.View.EmojiChat.EmojiChatPanelView
+  enableToggleEmojiBubbles: 1
   toggleEmojiFirstBubbleDelaySeconds: 2
   toggleEmojiSpawnIntervalSeconds: 0.5
   toggleEmojiBubbleLifetimeSeconds: 2.6
@@ -2554,7 +2555,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: 21300000, guid: 734db5a394b98af4a9777f6cc1c335ca, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1

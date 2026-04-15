@@ -27,6 +27,10 @@ namespace ChillAI.Core.Layout
         public float profileRootX;
         public float profileRootY;
 
+        public bool hasChatHistoryRoot;
+        public float chatHistoryRootX;
+        public float chatHistoryRootY;
+
         public bool hasChatPanel;
         public float chatPanelLeft;
         public float chatPanelTop;
@@ -44,6 +48,12 @@ namespace ChillAI.Core.Layout
         public float profilePanelTop;
         public float profilePanelW;
         public float profilePanelH;
+
+        public bool hasChatHistoryPanel;
+        public float chatHistoryPanelLeft;
+        public float chatHistoryPanelTop;
+        public float chatHistoryPanelW;
+        public float chatHistoryPanelH;
 
         public bool hasTaskColLeftRatio;
         public float taskColLeftRatio;

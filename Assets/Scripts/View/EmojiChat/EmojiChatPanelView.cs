@@ -1,10 +1,8 @@
 using ChillAI.Controller;
-using ChillAI.Core.Config;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
 using ChillAI.Service.Layout;
 using ChillAI.View.UI;
-using ChillAI.View.Window;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -19,20 +17,14 @@ namespace ChillAI.View.EmojiChat
     {
         SignalBus _signalBus;
         EmojiChatController _controller;
-        IConfigReader _configReader;
-        UserSettingsService _userSettings;
         UiLayoutController _uiLayout;
         EmojiPaletteData _emojiPalette;
 
         // UI elements
         Button _toggleBtn;
         VisualElement _panel;
-        Button _closeBtn;
-        ScrollView _chatMessages;
         TextField _chatInput;
         Button _sendBtn;
-        Label _statusLabel;
-        Label _loadingLabel;
 
         bool _panelVisible;
 
@@ -40,17 +32,10 @@ namespace ChillAI.View.EmojiChat
         string _lastAiEmojiForToggle;
 
         const string DefaultToggleText = "💬";
-        const float ErrorDedupWindowSeconds = 3f;
 
-        // Window drag
-        WindowDragManipulator _dragManipulator;
-        PanelResizeManipulator _resizeManipulator;
-        VisualElement _resizeHandle;
         VisualElement _toggleEmojiBubbleStack;
         readonly List<ToggleEmojiBubbleEntry> _activeToggleEmojiBubbles = new();
         Coroutine _toggleEmojiSpawnCoroutine;
-        string _lastErrorMessage;
-        float _lastErrorShownAt = -100f;
 
         [Header("Toggle Emoji Bubble")]
         [SerializeField] bool enableToggleEmojiBubbles = true;
@@ -70,15 +55,11 @@ namespace ChillAI.View.EmojiChat
         public void Construct(
             SignalBus signalBus,
             EmojiChatController controller,
-            IConfigReader configReader,
-            UserSettingsService userSettings,
             UiLayoutController uiLayout,
             EmojiPaletteData emojiPalette)
         {
             _signalBus = signalBus;
             _controller = controller;
-            _configReader = configReader;
-            _userSettings = userSettings;
             _uiLayout = uiLayout;
             _emojiPalette = emojiPalette;
         }
@@ -89,66 +70,31 @@ namespace ChillAI.View.EmojiChat
 
             _toggleBtn = root.Q<Button>("chat-toggle-btn");
             _panel = root.Q<VisualElement>("chat-panel");
-            _closeBtn = root.Q<Button>("chat-close-btn");
-            _chatMessages = root.Q<ScrollView>("chat-messages");
             _chatInput = root.Q<TextField>("chat-input");
             _sendBtn = root.Q<Button>("chat-send-btn");
-            _statusLabel = root.Q<Label>("chat-status-label");
-            _loadingLabel = root.Q<Label>("chat-loading-label");
 
             _uiLayout.RegisterChatHudRoot(root);
-            _uiLayout.RegisterChatPanel(_panel);
             _panelVisible = !_panel.ClassListContains("hidden");
 
             _toggleBtn.clicked += OnToggle;
-            _closeBtn.clicked += OnToggle;
             _sendBtn.clicked += OnSubmit;
-
-            var header = root.Q<VisualElement>(className: "chat-panel-header");
-            _dragManipulator = new WindowDragManipulator(_panel);
-            header.AddManipulator(_dragManipulator);
-            _dragManipulator.DragEnded += OnHudLayoutChanged;
-
-            _resizeHandle = root.Q<VisualElement>("chat-resize-handle");
-            if (_resizeHandle != null)
-            {
-                _resizeManipulator = new PanelResizeManipulator(
-                    _panel,
-                    _userSettings.Data.chatPanelMinWidth,
-                    _userSettings.Data.chatPanelMinHeight,
-                    OnHudLayoutChanged);
-                _resizeHandle.AddManipulator(_resizeManipulator);
-            }
 
             _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
             EnsureToggleEmojiBubbleStack();
-            UpdateStatus();
             RefreshToggleButtonVisual();
         }
 
         void OnDisable()
         {
             _toggleBtn.clicked -= OnToggle;
-            _closeBtn.clicked -= OnToggle;
             _sendBtn.clicked -= OnSubmit;
-
-            var header = _panel.Q<VisualElement>(className: "chat-panel-header");
-            if (_dragManipulator != null)
-            {
-                header?.RemoveManipulator(_dragManipulator);
-                _dragManipulator.DragEnded -= OnHudLayoutChanged;
-            }
-
-            if (_resizeManipulator != null && _resizeHandle != null)
-                _resizeHandle.RemoveManipulator(_resizeManipulator);
 
             _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
 
             _uiLayout?.UnregisterChatHudRoot();
-            _uiLayout?.UnregisterChatPanel();
 
             ClearToggleEmojiBubbles();
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiResponse);
@@ -156,7 +102,6 @@ namespace ChillAI.View.EmojiChat
 
         void Update()
         {
-            _loadingLabel.EnableInClassList("hidden", !_controller.IsProcessing);
             _sendBtn.SetEnabled(!_controller.IsProcessing);
         }
 
@@ -169,11 +114,6 @@ namespace ChillAI.View.EmojiChat
                 _chatInput.Focus();
 
             RefreshToggleButtonVisual();
-            _uiLayout?.RequestSave();
-        }
-
-        void OnHudLayoutChanged()
-        {
             _uiLayout?.RequestSave();
         }
 
@@ -191,9 +131,6 @@ namespace ChillAI.View.EmojiChat
             var text = _chatInput.value?.Trim();
             if (string.IsNullOrEmpty(text)) return;
 
-            // Show user bubble immediately
-            AddBubble(text, true);
-
             _controller.SendMessage(text);
             // Defer clear to avoid ArgumentOutOfRangeException from
             // TextField's internal handler accessing stale cursor indices
@@ -208,18 +145,7 @@ namespace ChillAI.View.EmojiChat
         void OnEmojiResponse(EmojiChatResponseSignal signal)
         {
             if (signal.IsError)
-            {
-                if (ShouldSuppressDuplicateError(signal.ErrorMessage))
-                    return;
-
-                SetStatusText(signal.ErrorMessage, isError: true);
                 return;
-            }
-
-            SetStatusText(string.Empty, isError: false);
-
-            foreach (var msg in signal.Messages)
-                AddBubble(msg, false);
 
             var toggleEmoji = TryGetToggleEmoji(signal.Messages);
             if (!string.IsNullOrEmpty(toggleEmoji) && toggleEmoji != _emojiPalette.placeholderEmoji)
@@ -227,28 +153,6 @@ namespace ChillAI.View.EmojiChat
 
             ShowToggleEmojiBubbles(signal.Messages);
             RefreshToggleButtonVisual();
-        }
-
-        bool ShouldSuppressDuplicateError(string message)
-        {
-            var normalized = message?.Trim() ?? string.Empty;
-            var now = Time.unscaledTime;
-            var isDuplicate = string.Equals(_lastErrorMessage, normalized, StringComparison.Ordinal);
-            if (!isDuplicate || now - _lastErrorShownAt > ErrorDedupWindowSeconds)
-            {
-                _lastErrorMessage = normalized;
-                _lastErrorShownAt = now;
-                return false;
-            }
-
-            return true;
-        }
-
-        void SetStatusText(string message, bool isError)
-        {
-            _statusLabel.text = message ?? string.Empty;
-            _statusLabel.EnableInClassList("chat-status-label--error", isError && !string.IsNullOrEmpty(message));
-            _statusLabel.EnableInClassList("chat-status-label--hint", !isError && !string.IsNullOrEmpty(message));
         }
 
         void RefreshToggleButtonVisual()
@@ -455,32 +359,6 @@ namespace ChillAI.View.EmojiChat
             return IsEmojiTextElement(basePart) ? basePart : emoji;
         }
 
-        void AddBubble(string text, bool isUser)
-        {
-            var row = new VisualElement();
-            row.AddToClassList("chat-bubble-row");
-            row.AddToClassList(isUser ? "chat-bubble-row--user" : "chat-bubble-row--ai");
-
-            var bubble = new Label(text);
-            bubble.AddToClassList("chat-bubble");
-            bubble.AddToClassList(isUser ? "chat-bubble--user" : "chat-bubble--ai");
-
-            row.Add(bubble);
-            _chatMessages.Add(row);
-
-            // Enforce max visible bubbles
-            while (_chatMessages.contentContainer.childCount > _userSettings.Data.maxChatBubbles)
-                _chatMessages.contentContainer.RemoveAt(0);
-
-            // Auto-scroll to bottom after layout recalculates
-            void ScrollToBottom(GeometryChangedEvent evt)
-            {
-                _chatMessages.contentContainer.UnregisterCallback<GeometryChangedEvent>(ScrollToBottom);
-                _chatMessages.scrollOffset = new Vector2(0, _chatMessages.contentContainer.layout.height);
-            }
-            _chatMessages.contentContainer.RegisterCallback<GeometryChangedEvent>(ScrollToBottom);
-        }
-
         void ShowToggleEmojiBubbles(IReadOnlyList<string> messages)
         {
             if (_toggleBtn == null)
@@ -608,16 +486,5 @@ namespace ChillAI.View.EmojiChat
             _toggleEmojiBubbleStack = null;
         }
 
-        void UpdateStatus()
-        {
-            if (!_controller.IsAIConfigured)
-            {
-                SetStatusText($"Set API Key in:\n{_configReader.ConfigFilePath}", isError: false);
-            }
-            else
-            {
-                SetStatusText(string.Empty, isError: false);
-            }
-        }
     }
 }

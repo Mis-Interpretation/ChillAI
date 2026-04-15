@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using ChillAI.Controller;
 using ChillAI.Core.Settings;
 using ChillAI.Core.Signals;
+using ChillAI.View.ChatHistory;
 using ChillAI.Service.Layout;
 using ChillAI.Service.Platform;
 using ChillAI.View.EmojiChat;
@@ -90,6 +91,7 @@ namespace ChillAI.View.SystemMenu
             // Menu items
             root.Q<Button>("settings-btn").clicked += OpenSettings;
             root.Q<Button>("profile-insight-btn").clicked += OnProfileInsight;
+            root.Q<Button>("chat-history-btn").clicked += OnChatHistory;
             root.Q<Button>("switch-display-btn").clicked += OnSwitchDisplay;
             root.Q<Button>("exit-btn").clicked += OnExit;
             root.Q<Button>("reset-quest-btn").clicked += OnResetQuest;
@@ -140,24 +142,39 @@ namespace ChillAI.View.SystemMenu
             if (chats.Length > 0)
             {
                 var r = chats[0].GetComponent<UIDocument>()?.rootVisualElement;
-                if (r != null) list.Add(r);
+                AddUniqueRoot(list, r);
             }
 
             var tasks = Object.FindObjectsByType<TaskPanelView>(FindObjectsSortMode.None);
             if (tasks.Length > 0)
             {
                 var r = tasks[0].GetComponent<UIDocument>()?.rootVisualElement;
-                if (r != null) list.Add(r);
+                AddUniqueRoot(list, r);
             }
 
             var profiles = Object.FindObjectsByType<ProfileInsightPanelView>(FindObjectsSortMode.None);
             if (profiles.Length > 0)
             {
                 var r = profiles[0].GetComponent<UIDocument>()?.rootVisualElement;
-                if (r != null) list.Add(r);
+                AddUniqueRoot(list, r);
+            }
+
+            var historyPanels = Object.FindObjectsByType<ChatHistoryPanelView>(FindObjectsSortMode.None);
+            if (historyPanels.Length > 0)
+            {
+                var r = historyPanels[0].GetComponent<UIDocument>()?.rootVisualElement;
+                AddUniqueRoot(list, r);
             }
 
             return list;
+        }
+
+        static void AddUniqueRoot(List<VisualElement> list, VisualElement root)
+        {
+            if (root == null || list.Contains(root))
+                return;
+
+            list.Add(root);
         }
 
         void RefreshMenuCompanionRoots()
@@ -241,6 +258,12 @@ namespace ChillAI.View.SystemMenu
         {
             _menuPopup.EnableInClassList("hidden", true);
             _signalBus?.Fire<ToggleProfileInsightPanelSignal>();
+        }
+
+        void OnChatHistory()
+        {
+            _menuPopup.EnableInClassList("hidden", true);
+            _signalBus?.Fire<ToggleChatHistoryPanelSignal>();
         }
 
         void UpdateValueLabels()
