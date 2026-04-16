@@ -434,9 +434,9 @@ RectTransform:
   - {fileID: 2114751421}
   m_Father: {fileID: 3268486}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 538, y: -385}
+  m_AnchorMin: {x: 1, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: -350, y: 136}
   m_SizeDelta: {x: 288, y: 288}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &152889811
@@ -456,7 +456,8 @@ MonoBehaviour:
   targetElementClass: 
   anchorMode: 4
   screenOffset: {x: 0, y: 0}
-  keepInitialRelativeOffset: 0
+  assumedUiRootFromBottomRight: {x: 0, y: 0}
+  keepInitialRelativeOffset: 1
   hideWhenTargetMissing: 1
   followEvenWhenInactive: 1
 --- !u!1 &233201871
@@ -2532,7 +2533,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -10, y: 60}
   m_SizeDelta: {x: 960, y: 960}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &2114751422

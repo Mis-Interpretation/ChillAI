@@ -30,6 +30,7 @@ namespace ChillAI.View.UI
         [Header("Follow Settings")]
         [SerializeField] AnchorMode anchorMode = AnchorMode.Center;
         [SerializeField] Vector2 screenOffset;
+        [SerializeField] Vector2 assumedUiRootFromBottomRight;
         [SerializeField] bool keepInitialRelativeOffset = true;
         [SerializeField] bool hideWhenTargetMissing = true;
         [SerializeField] bool followEvenWhenInactive = true;
@@ -40,7 +41,7 @@ namespace ChillAI.View.UI
         CanvasRenderer _canvasRenderer;
         VisualElement _targetElement;
         bool _hasCapturedInitialOffset;
-        Vector3 _initialWorldOffset;
+        Vector2 _initialScreenOffset;
 
         void Awake()
         {
@@ -54,6 +55,11 @@ namespace ChillAI.View.UI
         void OnEnable()
         {
             _hasCapturedInitialOffset = false;
+
+            if (!keepInitialRelativeOffset)
+                return;
+
+            TryCaptureInitialOffsetAtEnable();
         }
 
         /// <summary>
@@ -64,10 +70,13 @@ namespace ChillAI.View.UI
         {
             _hasCapturedInitialOffset = false;
 
-            if (!TryGetTargetWorldPosition(out var targetWorld))
+            if (!TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
                 return;
 
-            _initialWorldOffset = _selfRect.position - targetWorld;
+            if (!TryGetSelfScreenBottomLeft(out var selfScreenBottomLeft))
+                return;
+
+            _initialScreenOffset = selfScreenBottomLeft - targetScreenBottomLeft;
             _hasCapturedInitialOffset = true;
         }
 
@@ -82,13 +91,23 @@ namespace ChillAI.View.UI
             if (!followEvenWhenInactive && (!isActiveAndEnabled || !gameObject.activeInHierarchy))
                 return;
 
-            if (!TryGetTargetWorldPosition(out var targetWorld))
+            if (!TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
             {
                 SetVisible(false);
                 return;
             }
 
-            ApplyToCanvas(targetWorld, keepInitialRelativeOffset);
+            var desiredScreenBottomLeft = keepInitialRelativeOffset
+                ? targetScreenBottomLeft + (_hasCapturedInitialOffset ? _initialScreenOffset : Vector2.zero)
+                : targetScreenBottomLeft;
+
+            if (!TryConvertScreenToWorld(desiredScreenBottomLeft, out var targetWorld))
+            {
+                SetVisible(false);
+                return;
+            }
+
+            _selfRect.position = targetWorld;
             SetVisible(true);
         }
 
@@ -117,9 +136,45 @@ namespace ChillAI.View.UI
                 _targetElement = root.Q<VisualElement>(className: targetElementClass);
         }
 
-        bool TryGetTargetWorldPosition(out Vector3 targetWorld)
+        bool TryCaptureInitialOffsetAtEnable()
         {
-            targetWorld = default;
+            if (!TryGetSelfScreenBottomLeft(out var selfScreenBottomLeft))
+                return false;
+
+            if (TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
+            {
+                _initialScreenOffset = selfScreenBottomLeft - targetScreenBottomLeft;
+                _hasCapturedInitialOffset = IsFinite(_initialScreenOffset);
+                return _hasCapturedInitialOffset;
+            }
+
+            // Fallback when target is not yet queryable on enable.
+            var assumedRootBottomLeft = BottomRightToBottomLeft(assumedUiRootFromBottomRight);
+            if (!IsFinite(assumedRootBottomLeft))
+                return false;
+            _initialScreenOffset = selfScreenBottomLeft - assumedRootBottomLeft;
+            _hasCapturedInitialOffset = IsFinite(_initialScreenOffset);
+            return _hasCapturedInitialOffset;
+        }
+
+        bool TryGetSelfScreenBottomLeft(out Vector2 selfScreenBottomLeft)
+        {
+            selfScreenBottomLeft = default;
+
+            if (_canvas == null)
+                ResolveCanvasRefs();
+
+            if (_canvas == null)
+                return false;
+
+            var camera = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
+            selfScreenBottomLeft = RectTransformUtility.WorldToScreenPoint(camera, _selfRect.position);
+            return IsFinite(selfScreenBottomLeft);
+        }
+
+        bool TryGetTargetScreenBottomLeft(out Vector2 targetScreenBottomLeft)
+        {
+            targetScreenBottomLeft = default;
 
             if (_targetElement == null || _targetElement.panel == null)
                 ResolveTargetElement();
@@ -133,35 +188,38 @@ namespace ChillAI.View.UI
             if (_canvas == null)
                 return false;
 
-            var panelPoint = GetAnchorPanelPoint(_targetElement.worldBound, anchorMode);
+            if (!TryGetAnchorPanelPoint(_targetElement, anchorMode, out var panelPoint))
+                return false;
+            if (!IsFinite(panelPoint))
+                return false;
             var screenTopLeft = PanelToScreenTopLeft(_targetElement.panel, panelPoint);
-            var screenBottomLeft = new Vector2(screenTopLeft.x, Screen.height - screenTopLeft.y) + screenOffset;
+            if (!IsFinite(screenTopLeft))
+                return false;
+            targetScreenBottomLeft = new Vector2(screenTopLeft.x, Screen.height - screenTopLeft.y) + screenOffset;
+            return IsFinite(targetScreenBottomLeft);
+        }
+
+        bool TryConvertScreenToWorld(Vector2 screenBottomLeft, out Vector3 worldPosition)
+        {
+            worldPosition = default;
+            if (!IsFinite(screenBottomLeft))
+                return false;
+
+            if (_canvas == null)
+                ResolveCanvasRefs();
+
+            if (_canvas == null)
+                return false;
 
             var camera = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
             var parentRect = _selfRect.parent as RectTransform;
             if (parentRect == null)
                 return false;
 
-            if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(parentRect, screenBottomLeft, camera, out targetWorld))
+            if (!RectTransformUtility.ScreenPointToWorldPointInRectangle(parentRect, screenBottomLeft, camera, out worldPosition))
                 return false;
 
-            return true;
-        }
-
-        void ApplyToCanvas(Vector3 targetWorld, bool applyInitialOffset)
-        {
-            if (applyInitialOffset)
-            {
-                if (!_hasCapturedInitialOffset)
-                {
-                    _initialWorldOffset = _selfRect.position - targetWorld;
-                    _hasCapturedInitialOffset = true;
-                }
-            }
-
-            _selfRect.position = applyInitialOffset
-                ? targetWorld + _initialWorldOffset
-                : targetWorld;
+            return IsFinite(worldPosition);
         }
 
         void SetVisible(bool visible)
@@ -176,35 +234,79 @@ namespace ChillAI.View.UI
                 _canvasRenderer.cull = !visible;
         }
 
-        static Vector2 GetAnchorPanelPoint(Rect rect, AnchorMode mode)
+        static bool TryGetAnchorPanelPoint(VisualElement element, AnchorMode mode, out Vector2 panelPoint)
         {
-            return mode switch
+            panelPoint = default;
+            if (element == null)
+                return false;
+
+            var layout = element.layout;
+            if (!IsFinite(layout.width) || !IsFinite(layout.height))
+                return false;
+
+            var width = Mathf.Max(0f, layout.width);
+            var height = Mathf.Max(0f, layout.height);
+            var localPoint = mode switch
             {
-                AnchorMode.TopLeft => new Vector2(rect.xMin, rect.yMin),
-                AnchorMode.TopRight => new Vector2(rect.xMax, rect.yMin),
-                AnchorMode.BottomLeft => new Vector2(rect.xMin, rect.yMax),
-                AnchorMode.BottomRight => new Vector2(rect.xMax, rect.yMax),
-                _ => rect.center
+                AnchorMode.TopLeft => new Vector2(0f, 0f),
+                AnchorMode.TopRight => new Vector2(width, 0f),
+                AnchorMode.BottomLeft => new Vector2(0f, height),
+                AnchorMode.BottomRight => new Vector2(width, height),
+                _ => new Vector2(width * 0.5f, height * 0.5f)
             };
+
+            panelPoint = element.LocalToWorld(localPoint);
+            return IsFinite(panelPoint);
         }
 
         static Vector2 PanelToScreenTopLeft(IPanel panel, Vector2 panelPoint)
         {
-            // Derive inverse mapping from ScreenToPanel to stay compatible with Unity versions
-            // where RuntimePanelUtils.PanelToScreen is unavailable.
-            var panelAt0 = RuntimePanelUtils.ScreenToPanel(panel, Vector2.zero);
-            var panelAtX = RuntimePanelUtils.ScreenToPanel(panel, Vector2.right);
-            var panelAtY = RuntimePanelUtils.ScreenToPanel(panel, Vector2.up);
+            // Derive inverse mapping from ScreenToPanel using wide samples.
+            // 1px samples can introduce noticeable scale error due internal rounding.
+            var screenWidth = Mathf.Max(1f, Screen.width);
+            var screenHeight = Mathf.Max(1f, Screen.height);
+
+            var s0 = Vector2.zero;
+            var sX = new Vector2(screenWidth, 0f);
+            var sY = new Vector2(0f, screenHeight);
+
+            var panelAt0 = RuntimePanelUtils.ScreenToPanel(panel, s0);
+            var panelAtX = RuntimePanelUtils.ScreenToPanel(panel, sX);
+            var panelAtY = RuntimePanelUtils.ScreenToPanel(panel, sY);
+            if (!IsFinite(panelAt0) || !IsFinite(panelAtX) || !IsFinite(panelAtY) || !IsFinite(panelPoint))
+                return new Vector2(float.NaN, float.NaN);
 
             var dx = panelAtX.x - panelAt0.x;
             var dy = panelAtY.y - panelAt0.y;
+            if (!IsFinite(dx) || !IsFinite(dy))
+                return new Vector2(float.NaN, float.NaN);
 
             if (Mathf.Abs(dx) < 0.0001f || Mathf.Abs(dy) < 0.0001f)
                 return panelPoint;
 
-            var sx = (panelPoint.x - panelAt0.x) / dx;
-            var sy = (panelPoint.y - panelAt0.y) / dy;
+            var sx = (panelPoint.x - panelAt0.x) * (screenWidth / dx);
+            var sy = (panelPoint.y - panelAt0.y) * (screenHeight / dy);
             return new Vector2(sx, sy);
+        }
+
+        static Vector2 BottomRightToBottomLeft(Vector2 positionFromBottomRight)
+        {
+            return new Vector2(Screen.width - positionFromBottomRight.x, positionFromBottomRight.y);
+        }
+
+        static bool IsFinite(float value)
+        {
+            return !float.IsNaN(value) && !float.IsInfinity(value);
+        }
+
+        static bool IsFinite(Vector2 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y);
+        }
+
+        static bool IsFinite(Vector3 value)
+        {
+            return IsFinite(value.x) && IsFinite(value.y) && IsFinite(value.z);
         }
     }
 }

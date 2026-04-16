@@ -13,6 +13,5 @@ MonoBehaviour:
   m_Name: EmojiPaletteData
   m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.EmojiPaletteData
   activeLists:
-  - {fileID: 11400000, guid: c4110dbfaf0c69e43b134f8b4ce232fc, type: 2}
-  - {fileID: 11400000, guid: 2a334827afd04634fbd0aa73f5414587, type: 2}
+  - {fileID: 11400000, guid: 8ae88f468c626094da9859e9d832634f, type: 2}
   placeholderEmoji: "\U0001F512"

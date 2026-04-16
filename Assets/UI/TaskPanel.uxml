@@ -1,6 +1,5 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/TaskPanel.uss?fileID=7433441132597879392&amp;guid=9e89d11055c06aa43aeee1c565879ac7&amp;type=3#TaskPanel"/>
-    <ui:Button name="toggle-btn" text="Todo" class="toggle-btn" style="translate: 0 -25px;"/>
     <ui:VisualElement name="panel" class="panel hidden" style="translate: 0 -25px;">
         <ui:VisualElement class="panel-header">
             <ui:Label text="待办事项列表" class="panel-title"/>
@@ -21,4 +20,5 @@
         </ui:VisualElement>
         <ui:VisualElement name="task-resize-handle" class="panel-resize-handle"/>
     </ui:VisualElement>
+    <ui:Button name="toggle-btn" text="Todo" class="toggle-btn" style="translate: -60px -60px; bottom: 0; right: 0;"/>
 </ui:UXML>
