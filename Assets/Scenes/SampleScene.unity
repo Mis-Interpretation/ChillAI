@@ -2072,6 +2072,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ChillAI.View.EmojiChat.EmojiChatPanelView
   enableToggleEmojiBubbles: 1
+  useChatPanelStyleForToggleEmojiBubbles: 0
+  toggleEmojiDefaultBubbleFontSize: 24
   toggleEmojiFirstBubbleDelaySeconds: 2
   toggleEmojiSpawnIntervalSeconds: 0.5
   toggleEmojiBubbleLifetimeSeconds: 2.6

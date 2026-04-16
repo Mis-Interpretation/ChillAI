@@ -39,6 +39,8 @@ namespace ChillAI.View.EmojiChat
 
         [Header("Toggle Emoji Bubble")]
         [SerializeField] bool enableToggleEmojiBubbles = true;
+        [SerializeField] bool useChatPanelStyleForToggleEmojiBubbles = true;
+        [SerializeField, Min(1f)] float toggleEmojiDefaultBubbleFontSize = 24f;
         [SerializeField, Min(0f)] float toggleEmojiFirstBubbleDelaySeconds = 0f;
         [SerializeField, Min(0f)] float toggleEmojiSpawnIntervalSeconds = 0.16f;
         [SerializeField, Min(0f)] float toggleEmojiBubbleLifetimeSeconds = 2.6f;
@@ -401,10 +403,15 @@ namespace ChillAI.View.EmojiChat
             if (string.IsNullOrWhiteSpace(emojiText) || !EnsureToggleEmojiBubbleStack())
                 return;
 
+            var bubble = new TextBubble(emojiText, showDelayMs: 0, useAbsolutePosition: false);
+            if (useChatPanelStyleForToggleEmojiBubbles)
+                bubble.ApplyChatPanelAiBubbleStyle(hideTail: true);
+            else
+                bubble.SetFontSize(toggleEmojiDefaultBubbleFontSize);
+
             var entry = new ToggleEmojiBubbleEntry
             {
-                Bubble = new TextBubble(emojiText, showDelayMs: 0, useAbsolutePosition: false)
-                    .ApplyChatPanelAiBubbleStyle(hideTail: true)
+                Bubble = bubble
             };
 
             _activeToggleEmojiBubbles.Add(entry); // Newest bubble is appended to bottom in vertical stack.

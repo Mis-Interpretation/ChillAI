@@ -133,6 +133,12 @@ namespace ChillAI.View.UI
             return this;
         }
 
+        public TextBubble SetFontSize(float fontSize)
+        {
+            _label.style.fontSize = Mathf.Max(1f, fontSize);
+            return this;
+        }
+
         public string Text
         {
             get => _label.text;
