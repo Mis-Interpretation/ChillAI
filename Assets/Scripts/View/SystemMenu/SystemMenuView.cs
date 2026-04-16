@@ -26,6 +26,8 @@ namespace ChillAI.View.SystemMenu
         [Inject] SignalBus _signalBus;
         [Inject] UiLayoutController _uiLayout;
 
+        [SerializeField] bool _showActiveProcessHud = true;
+
         VisualElement _wrapper;
         VisualElement _menuBtn;
         VisualElement _menuPopup;
@@ -73,6 +75,8 @@ namespace ChillAI.View.SystemMenu
             _menuPopup = root.Q<VisualElement>("menu-popup");
             _settingsPanel = root.Q<VisualElement>("settings-panel");
             _processHud = root.Q<Label>("active-process-hud");
+            if (_processHud != null)
+                _processHud.style.display = _showActiveProcessHud ? DisplayStyle.Flex : DisplayStyle.None;
 
             _signalBus?.Subscribe<ActiveProcessChangedSignal>(OnActiveProcessChanged);
 
@@ -209,7 +213,7 @@ namespace ChillAI.View.SystemMenu
 
         void OnActiveProcessChanged(ActiveProcessChangedSignal signal)
         {
-            if (_processHud != null)
+            if (_showActiveProcessHud && _processHud != null)
                 _processHud.text = $"{signal.ProcessName} - {signal.Category}";
         }
 

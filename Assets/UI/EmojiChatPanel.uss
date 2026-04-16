@@ -118,6 +118,33 @@
 
 .chat-history-messages {
     flex-grow: 1;
+    margin-bottom: 8px;
+}
+
+.chat-history-pagination {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.chat-history-page-btn {
+    width: 56px;
+    height: 24px;
+    border-radius: 6px;
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #f0f0f0;
+    border-width: 0;
+    font-size: 11px;
+}
+
+.chat-history-page-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.chat-history-page-label {
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 11px;
 }
 
 .chat-history-messages .unity-scroller__low-button,
