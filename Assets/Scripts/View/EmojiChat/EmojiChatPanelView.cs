@@ -153,7 +153,7 @@ namespace ChillAI.View.EmojiChat
             if (!string.IsNullOrEmpty(toggleEmoji) && toggleEmoji != _emojiPalette.placeholderEmoji)
                 _lastAiEmojiForToggle = toggleEmoji;
 
-            ShowToggleEmojiBubbles(signal.Messages);
+            ShowToggleEmojiBubbles(signal.Messages, signal.SkipFirstBubbleDelay);
             RefreshToggleButtonVisual();
         }
 
@@ -361,7 +361,7 @@ namespace ChillAI.View.EmojiChat
             return IsEmojiTextElement(basePart) ? basePart : emoji;
         }
 
-        void ShowToggleEmojiBubbles(IReadOnlyList<string> messages)
+        void ShowToggleEmojiBubbles(IReadOnlyList<string> messages, bool skipFirstDelay = false)
         {
             if (_toggleBtn == null)
                 return;
@@ -378,12 +378,12 @@ namespace ChillAI.View.EmojiChat
 
             if (_toggleEmojiSpawnCoroutine != null)
                 StopCoroutine(_toggleEmojiSpawnCoroutine);
-            _toggleEmojiSpawnCoroutine = StartCoroutine(SpawnToggleEmojiBubbles(emojis));
+            _toggleEmojiSpawnCoroutine = StartCoroutine(SpawnToggleEmojiBubbles(emojis, skipFirstDelay));
         }
 
-        System.Collections.IEnumerator SpawnToggleEmojiBubbles(List<string> emojis)
+        System.Collections.IEnumerator SpawnToggleEmojiBubbles(List<string> emojis, bool skipFirstDelay = false)
         {
-            var firstDelay = Mathf.Max(0f, toggleEmojiFirstBubbleDelaySeconds);
+            var firstDelay = skipFirstDelay ? 0f : Mathf.Max(0f, toggleEmojiFirstBubbleDelaySeconds);
             var delay = Mathf.Max(0f, toggleEmojiSpawnIntervalSeconds);
             if (firstDelay > 0f)
                 yield return new WaitForSecondsRealtime(firstDelay);

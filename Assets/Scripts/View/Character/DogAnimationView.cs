@@ -87,17 +87,37 @@ namespace ChillAI.View.Character
             animator.SetInteger(_responseCountHash, count);
             ResponseMessageCountChanged?.Invoke(count);
 
-            // Reset opposite trigger to keep transitions deterministic.
-            animator.ResetTrigger(_pressTriggerHash);
-            animator.ResetTrigger(_idleTriggerHash);
-
             if (!signal.IsError && count > 0)
             {
-                animator.SetTrigger(_pressTriggerHash);
+                TriggerEmojiButtonPressAnimation(count);
                 return;
             }
 
+            // Reset opposite trigger to keep transitions deterministic.
+            animator.ResetTrigger(_pressTriggerHash);
+            animator.ResetTrigger(_idleTriggerHash);
             animator.SetTrigger(_idleTriggerHash);
+        }
+
+        /// <summary>
+        /// Proactively plays the "emoji button pressed" animation without waiting
+        /// for an AI response signal.
+        /// </summary>
+        public void TriggerEmojiButtonPressAnimation(int responseCount = 1)
+        {
+            if (animator == null)
+                return;
+
+            ApplyWaitState(false);
+            _lastProcessingState = false;
+
+            var clampedCount = Mathf.Max(0, responseCount);
+            animator.SetInteger(_responseCountHash, clampedCount);
+            ResponseMessageCountChanged?.Invoke(clampedCount);
+
+            animator.ResetTrigger(_idleTriggerHash);
+            animator.ResetTrigger(_pressTriggerHash);
+            animator.SetTrigger(_pressTriggerHash);
         }
 
         void ApplyWaitState(bool isWaiting)

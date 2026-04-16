@@ -41,7 +41,11 @@ namespace ChillAI.View.UI
         CanvasRenderer _canvasRenderer;
         VisualElement _targetElement;
         bool _hasCapturedInitialOffset;
-        Vector2 _initialScreenOffset;
+        // Offset from the target's anchor to this element's origin, expressed in UITK panel
+        // coordinates (same space as VisualElement.LocalToWorld / layout). Storing in panel
+        // space means the offset scales together with the target under PanelSettings scaling,
+        // so the relative position stays proportional across resolution / aspect changes.
+        Vector2 _initialPanelOffset;
 
         void Awake()
         {
@@ -54,12 +58,12 @@ namespace ChillAI.View.UI
 
         void OnEnable()
         {
+            // Do not capture the offset here: on the frame this component is enabled the
+            // UITK target's layout can still be unresolved (layout.width/height == 0),
+            // which would bake a wrong anchor point and cause a visible jump on the
+            // first frame after real layout comes in. The capture is deferred to the
+            // first LateUpdate where TryGetTargetPanelPoint reports a real layout.
             _hasCapturedInitialOffset = false;
-
-            if (!keepInitialRelativeOffset)
-                return;
-
-            TryCaptureInitialOffsetAtEnable();
         }
 
         /// <summary>
@@ -70,14 +74,14 @@ namespace ChillAI.View.UI
         {
             _hasCapturedInitialOffset = false;
 
-            if (!TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
+            if (!TryGetTargetPanelPoint(out var targetPanel))
                 return;
 
-            if (!TryGetSelfScreenBottomLeft(out var selfScreenBottomLeft))
+            if (!TryGetSelfPanelPoint(out var selfPanel))
                 return;
 
-            _initialScreenOffset = selfScreenBottomLeft - targetScreenBottomLeft;
-            _hasCapturedInitialOffset = true;
+            _initialPanelOffset = selfPanel - targetPanel;
+            _hasCapturedInitialOffset = IsFinite(_initialPanelOffset);
         }
 
         [ContextMenu("Recalibrate Follow Offset")]
@@ -91,17 +95,39 @@ namespace ChillAI.View.UI
             if (!followEvenWhenInactive && (!isActiveAndEnabled || !gameObject.activeInHierarchy))
                 return;
 
-            if (!TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
+            if (!TryGetTargetPanelPoint(out var targetPanel))
             {
                 SetVisible(false);
                 return;
             }
 
-            var desiredScreenBottomLeft = keepInitialRelativeOffset
-                ? targetScreenBottomLeft + (_hasCapturedInitialOffset ? _initialScreenOffset : Vector2.zero)
-                : targetScreenBottomLeft;
+            // Lazy capture: OnEnable runs before the UITK element is laid out, so we
+            // defer the baseline to the first frame where the target has a real layout.
+            if (keepInitialRelativeOffset && !_hasCapturedInitialOffset)
+            {
+                if (!TryCaptureInitialPanelOffset())
+                {
+                    // Leave _selfRect.position untouched so the editor-time placement
+                    // is preserved until we have a valid baseline. This is what makes
+                    // the follower look identical before and after entering Play mode.
+                    return;
+                }
+            }
 
-            if (!TryConvertScreenToWorld(desiredScreenBottomLeft, out var targetWorld))
+            var desiredPanel = keepInitialRelativeOffset
+                ? targetPanel + _initialPanelOffset
+                : targetPanel;
+
+            var screenTopLeft = PanelToScreenTopLeft(_targetElement.panel, desiredPanel);
+            if (!IsFinite(screenTopLeft))
+            {
+                SetVisible(false);
+                return;
+            }
+
+            var screenBottomLeft = new Vector2(screenTopLeft.x, Screen.height - screenTopLeft.y) + screenOffset;
+
+            if (!TryConvertScreenToWorld(screenBottomLeft, out var targetWorld))
             {
                 SetVisible(false);
                 return;
@@ -136,25 +162,46 @@ namespace ChillAI.View.UI
                 _targetElement = root.Q<VisualElement>(className: targetElementClass);
         }
 
-        bool TryCaptureInitialOffsetAtEnable()
+        bool TryCaptureInitialPanelOffset()
         {
+            if (!TryGetTargetPanelPoint(out var targetPanel))
+                return false;
+
+            if (!TryGetSelfPanelPoint(out var selfPanel))
+                return false;
+
+            _initialPanelOffset = selfPanel - targetPanel;
+            _hasCapturedInitialOffset = IsFinite(_initialPanelOffset);
+            return _hasCapturedInitialOffset;
+        }
+
+        bool TryGetSelfPanelPoint(out Vector2 panelPoint)
+        {
+            panelPoint = default;
+
+            if (_targetElement == null || _targetElement.panel == null)
+                ResolveTargetElement();
+            if (_targetElement == null || _targetElement.panel == null)
+                return false;
+
             if (!TryGetSelfScreenBottomLeft(out var selfScreenBottomLeft))
                 return false;
 
-            if (TryGetTargetScreenBottomLeft(out var targetScreenBottomLeft))
-            {
-                _initialScreenOffset = selfScreenBottomLeft - targetScreenBottomLeft;
-                _hasCapturedInitialOffset = IsFinite(_initialScreenOffset);
-                return _hasCapturedInitialOffset;
-            }
+            var screenTopLeft = new Vector2(selfScreenBottomLeft.x, Screen.height - selfScreenBottomLeft.y);
+            panelPoint = RuntimePanelUtils.ScreenToPanel(_targetElement.panel, screenTopLeft);
+            return IsFinite(panelPoint);
+        }
 
-            // Fallback when target is not yet queryable on enable.
-            var assumedRootBottomLeft = BottomRightToBottomLeft(assumedUiRootFromBottomRight);
-            if (!IsFinite(assumedRootBottomLeft))
+        bool TryGetTargetPanelPoint(out Vector2 panelPoint)
+        {
+            panelPoint = default;
+
+            if (_targetElement == null || _targetElement.panel == null)
+                ResolveTargetElement();
+            if (_targetElement == null || _targetElement.panel == null)
                 return false;
-            _initialScreenOffset = selfScreenBottomLeft - assumedRootBottomLeft;
-            _hasCapturedInitialOffset = IsFinite(_initialScreenOffset);
-            return _hasCapturedInitialOffset;
+
+            return TryGetAnchorPanelPoint(_targetElement, anchorMode, out panelPoint);
         }
 
         bool TryGetSelfScreenBottomLeft(out Vector2 selfScreenBottomLeft)
@@ -170,33 +217,6 @@ namespace ChillAI.View.UI
             var camera = _canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : _canvas.worldCamera;
             selfScreenBottomLeft = RectTransformUtility.WorldToScreenPoint(camera, _selfRect.position);
             return IsFinite(selfScreenBottomLeft);
-        }
-
-        bool TryGetTargetScreenBottomLeft(out Vector2 targetScreenBottomLeft)
-        {
-            targetScreenBottomLeft = default;
-
-            if (_targetElement == null || _targetElement.panel == null)
-                ResolveTargetElement();
-
-            if (_targetElement == null || _targetElement.panel == null)
-                return false;
-
-            if (_canvas == null)
-                ResolveCanvasRefs();
-
-            if (_canvas == null)
-                return false;
-
-            if (!TryGetAnchorPanelPoint(_targetElement, anchorMode, out var panelPoint))
-                return false;
-            if (!IsFinite(panelPoint))
-                return false;
-            var screenTopLeft = PanelToScreenTopLeft(_targetElement.panel, panelPoint);
-            if (!IsFinite(screenTopLeft))
-                return false;
-            targetScreenBottomLeft = new Vector2(screenTopLeft.x, Screen.height - screenTopLeft.y) + screenOffset;
-            return IsFinite(targetScreenBottomLeft);
         }
 
         bool TryConvertScreenToWorld(Vector2 screenBottomLeft, out Vector3 worldPosition)
@@ -244,8 +264,14 @@ namespace ChillAI.View.UI
             if (!IsFinite(layout.width) || !IsFinite(layout.height))
                 return false;
 
-            var width = Mathf.Max(0f, layout.width);
-            var height = Mathf.Max(0f, layout.height);
+            // Reject unresolved layouts. A zero-size layout looks "finite" but means
+            // UITK has not computed the element yet; capturing off of it produces a
+            // wrong anchor that causes a visible jump once the real size comes in.
+            if (layout.width <= 0f || layout.height <= 0f)
+                return false;
+
+            var width = layout.width;
+            var height = layout.height;
             var localPoint = mode switch
             {
                 AnchorMode.TopLeft => new Vector2(0f, 0f),
@@ -287,11 +313,6 @@ namespace ChillAI.View.UI
             var sx = (panelPoint.x - panelAt0.x) * (screenWidth / dx);
             var sy = (panelPoint.y - panelAt0.y) * (screenHeight / dy);
             return new Vector2(sx, sy);
-        }
-
-        static Vector2 BottomRightToBottomLeft(Vector2 positionFromBottomRight)
-        {
-            return new Vector2(Screen.width - positionFromBottomRight.x, positionFromBottomRight.y);
         }
 
         static bool IsFinite(float value)
