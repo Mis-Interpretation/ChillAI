@@ -27,6 +27,7 @@ namespace ChillAI.View.EmojiChat
         Button _sendBtn;
 
         bool _panelVisible;
+        bool _inputFocused;
 
         /// <summary>Last AI emoji line this session; toggle shows it while the panel is closed.</summary>
         string _lastAiEmojiForToggle;
@@ -82,6 +83,8 @@ namespace ChillAI.View.EmojiChat
             _sendBtn.clicked += OnSubmit;
 
             _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
+            _chatInput.RegisterCallback<FocusInEvent>(OnInputFocusIn, TrickleDown.TrickleDown);
+            _chatInput.RegisterCallback<FocusOutEvent>(OnInputFocusOut, TrickleDown.TrickleDown);
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
@@ -95,6 +98,11 @@ namespace ChillAI.View.EmojiChat
             _sendBtn.clicked -= OnSubmit;
 
             _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
+            _chatInput.UnregisterCallback<FocusInEvent>(OnInputFocusIn, TrickleDown.TrickleDown);
+            _chatInput.UnregisterCallback<FocusOutEvent>(OnInputFocusOut, TrickleDown.TrickleDown);
+
+            // Make sure the tilt state is cleared when the panel is torn down.
+            SetInputFocusState(false);
 
             _uiLayout?.UnregisterChatHudRoot();
 
@@ -117,6 +125,25 @@ namespace ChillAI.View.EmojiChat
 
             RefreshToggleButtonVisual();
             _uiLayout?.RequestSave();
+        }
+
+        void OnInputFocusIn(FocusInEvent evt)
+        {
+            SetInputFocusState(true);
+        }
+
+        void OnInputFocusOut(FocusOutEvent evt)
+        {
+            SetInputFocusState(false);
+        }
+
+        void SetInputFocusState(bool focused)
+        {
+            if (_inputFocused == focused)
+                return;
+
+            _inputFocused = focused;
+            _signalBus?.Fire(new ChatInputFocusSignal(focused));
         }
 
         void OnInputKeyDown(KeyDownEvent evt)

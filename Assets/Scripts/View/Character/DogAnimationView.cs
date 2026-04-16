@@ -14,6 +14,9 @@ namespace ChillAI.View.Character
         [SerializeField, Tooltip("Animation Parameters")]
         private string waitBool = "wait", pressTrigger = "press", idleTrigger = "idle";
 
+        [SerializeField, Tooltip("Animator bool parameter: true while the user is focused on the chat input (listening pose).")]
+        private string tiltBool = "tilt";
+
         [SerializeField, Tooltip("Animator int parameter: number of received messages in this response batch.")]
         private string responseCountInt = "chat_response_count";
 
@@ -29,8 +32,12 @@ namespace ChillAI.View.Character
         int _waitBoolHash;
         int _pressTriggerHash;
         int _idleTriggerHash;
+        int _tiltBoolHash;
         int _responseCountHash;
         bool _lastProcessingState;
+        bool _lastTiltState;
+        bool _tiltRequested;
+        bool _waitActive;
 
         [Inject]
         public void Construct(EmojiChatController chatController, SignalBus signalBus)
@@ -47,19 +54,23 @@ namespace ChillAI.View.Character
             _waitBoolHash = Animator.StringToHash(waitBool);
             _pressTriggerHash = Animator.StringToHash(pressTrigger);
             _idleTriggerHash = Animator.StringToHash(idleTrigger);
+            _tiltBoolHash = Animator.StringToHash(tiltBool);
             _responseCountHash = Animator.StringToHash(responseCountInt);
         }
 
         void OnEnable()
         {
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiChatResponse);
+            _signalBus?.Subscribe<ChatInputFocusSignal>(OnChatInputFocus);
             _lastProcessingState = _chatController != null && _chatController.IsProcessing;
+            _tiltRequested = false;
             ApplyWaitState(_lastProcessingState);
         }
 
         void OnDisable()
         {
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiChatResponse);
+            _signalBus?.TryUnsubscribe<ChatInputFocusSignal>(OnChatInputFocus);
         }
 
         void Update()
@@ -125,7 +136,37 @@ namespace ChillAI.View.Character
             if (animator == null)
                 return;
 
+            _waitActive = isWaiting;
             animator.SetBool(_waitBoolHash, isWaiting);
+
+            // Wait has priority over tilt: when entering wait, force tilt off so
+            // the animator can go tilt -> idle -> wait. When leaving wait,
+            // restore whatever the user's current focus state requests.
+            RefreshTiltState();
+        }
+
+        void OnChatInputFocus(ChatInputFocusSignal signal)
+        {
+            if (signal == null)
+                return;
+
+            _tiltRequested = signal.IsFocused;
+            RefreshTiltState();
+        }
+
+        void RefreshTiltState()
+        {
+            if (animator == null)
+                return;
+
+            // Wait (thinking) blocks tilt (listening). The animator controller
+            // only allows tilt -> idle -> wait, so tilt must be cleared first.
+            var effective = _tiltRequested && !_waitActive;
+            if (_lastTiltState == effective)
+                return;
+
+            _lastTiltState = effective;
+            animator.SetBool(_tiltBoolHash, effective);
         }
     }
 }

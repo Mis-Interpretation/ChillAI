@@ -57,6 +57,7 @@ namespace ChillAI.Installers
             Container.DeclareSignal<ProfileUpdatedSignal>().OptionalSubscriber();
             Container.DeclareSignal<ToggleProfileInsightPanelSignal>().OptionalSubscriber();
             Container.DeclareSignal<ToggleChatHistoryPanelSignal>().OptionalSubscriber();
+            Container.DeclareSignal<ChatInputFocusSignal>().OptionalSubscriber();
 
             // ScriptableObject settings (injected as instances)
             Container.BindInstance(appSettings);
