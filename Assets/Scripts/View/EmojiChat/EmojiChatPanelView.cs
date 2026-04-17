@@ -109,8 +109,10 @@ namespace ChillAI.View.EmojiChat
             _chatInput.UnregisterValueChangedCallback(OnInputValueChanged);
 
             // Make sure the tilt state is cleared when the panel is torn down.
-            SetInputFocusState(false);
-            SetInputContentState(false);
+            // Reset flags directly; don't fire signals during teardown since
+            // the SignalBus subscriptions may already be disposed.
+            _inputFocused = false;
+            _inputHasContent = false;
 
             _uiLayout?.UnregisterChatHudRoot();
 
@@ -170,11 +172,28 @@ namespace ChillAI.View.EmojiChat
 
         void OnInputKeyDown(KeyDownEvent evt)
         {
+            // Unity bug: TextEditingUtilities.GeneratePreviewString can throw
+            // ArgumentOutOfRangeException when IME composition cursor indices
+            // fall out of sync with the text after emoji (surrogate pair) input.
+            // Clamp both indices into [0, length] before the internal handler runs.
+            ClampTextSelection();
+
             if ((evt.keyCode == KeyCode.Return || evt.keyCode == KeyCode.KeypadEnter) && !evt.shiftKey)
             {
                 evt.StopImmediatePropagation();
                 OnSubmit();
             }
+        }
+
+        void ClampTextSelection()
+        {
+            if (_chatInput == null) return;
+            var len = _chatInput.value?.Length ?? 0;
+            var sel = _chatInput.textSelection;
+            var c = Mathf.Clamp(sel.cursorIndex, 0, len);
+            var s = Mathf.Clamp(sel.selectIndex, 0, len);
+            if (c != sel.cursorIndex) sel.cursorIndex = c;
+            if (s != sel.selectIndex) sel.selectIndex = s;
         }
 
         void OnSubmit()

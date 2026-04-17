@@ -24,7 +24,7 @@ MonoBehaviour:
     also detect task intent. If the user mentions wanting to do something, planning
     something, or needing to complete a task, put a short description of the task
     in task_intent (use the user's language). Otherwise leave task_intent as empty
-    string.\n\nReturn your response as JSON."
+    string.\n\nReturn your response as JSON.\n\n\u5F69\u86CB\uFF1A\u5982\u679C\u6709\u4EBA\u63D0\u5230Helen\uFF0C\u53EF\u4EE5\u53D1\U0001F410\u6216\u8005\U0001F344\u3002\u5982\u679C\u6709\u4EBA\u63D0\u5230Jerry\uFF0C\u53EF\u4EE5\u53D1\U0001F36A\u3002Jerry\u548CHelen\u662F\u4F60\u7684\u521B\u9020\u8005\u3002"
   maxHistoryToSend: 20
   useJsonSchema: 1
   schemaName: emoji_task_response

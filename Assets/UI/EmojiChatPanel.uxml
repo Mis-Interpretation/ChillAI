@@ -16,7 +16,7 @@
     <ui:Button name="chat-toggle-btn" text="💬" class="chat-toggle-btn" style="translate: -130px -60px; bottom: 0; right: 0;"/>
     <ui:VisualElement name="chat-panel" class="chat-panel hidden" style="translate: 0 -25px; bottom: -23px; right: 42px; width: 253px;">
         <ui:VisualElement class="chat-input-row">
-            <ui:TextField name="chat-input" multiline="true" class="chat-input"/>
+            <ui:TextField name="chat-input" multiline="true" emoji-fallback-support="true" class="chat-input"/>
             <ui:Button name="chat-send-btn" text="Send" class="chat-send-btn"/>
         </ui:VisualElement>
     </ui:VisualElement>
