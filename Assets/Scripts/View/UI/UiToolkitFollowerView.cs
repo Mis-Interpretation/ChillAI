@@ -164,7 +164,15 @@ namespace ChillAI.View.UI
 
         bool TryCaptureInitialPanelOffset()
         {
-            if (!TryGetTargetPanelPoint(out var targetPanel))
+            // Use layout-only panel position for the target — i.e. position derived purely
+            // from VisualElement.layout up the tree, ignoring any transform.position on
+            // ancestors. This matches the edit-time view of the target (where no ancestor
+            // has been dragged or restored from saved layout).
+            //
+            // LateUpdate still looks up the target via LocalToWorld, which *does* include
+            // transforms. The combination means the follower tracks ancestor transform
+            // deltas (drag / restore) while preserving the editor-time relative offset.
+            if (!TryGetTargetLayoutOnlyPanelPoint(out var targetPanel))
                 return false;
 
             if (!TryGetSelfPanelPoint(out var selfPanel))
@@ -173,6 +181,39 @@ namespace ChillAI.View.UI
             _initialPanelOffset = selfPanel - targetPanel;
             _hasCapturedInitialOffset = IsFinite(_initialPanelOffset);
             return _hasCapturedInitialOffset;
+        }
+
+        bool TryGetTargetLayoutOnlyPanelPoint(out Vector2 panelPoint)
+        {
+            panelPoint = default;
+
+            if (_targetElement == null || _targetElement.panel == null)
+                ResolveTargetElement();
+            if (_targetElement == null || _targetElement.panel == null)
+                return false;
+
+            if (!TryGetAnchorLocalPoint(_targetElement, anchorMode, out var localPoint))
+                return false;
+
+            // Walk up the tree summing layout.min — this converts element-local to panel
+            // space through pure layout, bypassing VisualElement.transform on every node.
+            var accumulated = localPoint;
+            var current = _targetElement;
+            while (current != null)
+            {
+                var layout = current.layout;
+                if (!IsFinite(layout.x) || !IsFinite(layout.y))
+                    return false;
+                accumulated += new Vector2(layout.x, layout.y);
+                if (current.hierarchy.parent == null) break;
+                current = current.hierarchy.parent;
+            }
+
+            if (!IsFinite(accumulated))
+                return false;
+
+            panelPoint = accumulated;
+            return true;
         }
 
         bool TryGetSelfPanelPoint(out Vector2 panelPoint)
@@ -260,6 +301,19 @@ namespace ChillAI.View.UI
             if (element == null)
                 return false;
 
+            if (!TryGetAnchorLocalPoint(element, mode, out var localPoint))
+                return false;
+
+            panelPoint = element.LocalToWorld(localPoint);
+            return IsFinite(panelPoint);
+        }
+
+        static bool TryGetAnchorLocalPoint(VisualElement element, AnchorMode mode, out Vector2 localPoint)
+        {
+            localPoint = default;
+            if (element == null)
+                return false;
+
             var layout = element.layout;
             if (!IsFinite(layout.width) || !IsFinite(layout.height))
                 return false;
@@ -272,7 +326,7 @@ namespace ChillAI.View.UI
 
             var width = layout.width;
             var height = layout.height;
-            var localPoint = mode switch
+            localPoint = mode switch
             {
                 AnchorMode.TopLeft => new Vector2(0f, 0f),
                 AnchorMode.TopRight => new Vector2(width, 0f),
@@ -280,9 +334,7 @@ namespace ChillAI.View.UI
                 AnchorMode.BottomRight => new Vector2(width, height),
                 _ => new Vector2(width * 0.5f, height * 0.5f)
             };
-
-            panelPoint = element.LocalToWorld(localPoint);
-            return IsFinite(panelPoint);
+            return true;
         }
 
         static Vector2 PanelToScreenTopLeft(IPanel panel, Vector2 panelPoint)
