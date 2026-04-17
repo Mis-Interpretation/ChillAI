@@ -28,6 +28,7 @@ namespace ChillAI.View.EmojiChat
 
         bool _panelVisible;
         bool _inputFocused;
+        bool _inputHasContent;
 
         /// <summary>Last AI emoji line this session; toggle shows it while the panel is closed.</summary>
         string _lastAiEmojiForToggle;
@@ -85,6 +86,11 @@ namespace ChillAI.View.EmojiChat
             _chatInput.RegisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
             _chatInput.RegisterCallback<FocusInEvent>(OnInputFocusIn, TrickleDown.TrickleDown);
             _chatInput.RegisterCallback<FocusOutEvent>(OnInputFocusOut, TrickleDown.TrickleDown);
+            _chatInput.RegisterValueChangedCallback(OnInputValueChanged);
+
+            // Seed the content state so downstream listeners (e.g. the dog
+            // tilt animation) are in sync with the current value.
+            SetInputContentState(!string.IsNullOrEmpty(_chatInput.value));
 
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiResponse);
 
@@ -100,9 +106,11 @@ namespace ChillAI.View.EmojiChat
             _chatInput.UnregisterCallback<KeyDownEvent>(OnInputKeyDown, TrickleDown.TrickleDown);
             _chatInput.UnregisterCallback<FocusInEvent>(OnInputFocusIn, TrickleDown.TrickleDown);
             _chatInput.UnregisterCallback<FocusOutEvent>(OnInputFocusOut, TrickleDown.TrickleDown);
+            _chatInput.UnregisterValueChangedCallback(OnInputValueChanged);
 
             // Make sure the tilt state is cleared when the panel is torn down.
             SetInputFocusState(false);
+            SetInputContentState(false);
 
             _uiLayout?.UnregisterChatHudRoot();
 
@@ -144,6 +152,20 @@ namespace ChillAI.View.EmojiChat
 
             _inputFocused = focused;
             _signalBus?.Fire(new ChatInputFocusSignal(focused));
+        }
+
+        void OnInputValueChanged(ChangeEvent<string> evt)
+        {
+            SetInputContentState(!string.IsNullOrEmpty(evt.newValue));
+        }
+
+        void SetInputContentState(bool hasContent)
+        {
+            if (_inputHasContent == hasContent)
+                return;
+
+            _inputHasContent = hasContent;
+            _signalBus?.Fire(new ChatInputContentSignal(hasContent));
         }
 
         void OnInputKeyDown(KeyDownEvent evt)

@@ -17,6 +17,9 @@ namespace ChillAI.View.Character
         [SerializeField, Tooltip("Animator bool parameter: true while the user is focused on the chat input (listening pose).")]
         private string tiltBool = "tilt";
 
+        [SerializeField, Tooltip("When true, tilt also requires the chat input to contain at least one character. When false, focus alone is enough.")]
+        private bool requireNonEmptyInputForTilt = true;
+
         [SerializeField, Tooltip("Animator int parameter: number of received messages in this response batch.")]
         private string responseCountInt = "chat_response_count";
 
@@ -37,6 +40,7 @@ namespace ChillAI.View.Character
         bool _lastProcessingState;
         bool _lastTiltState;
         bool _tiltRequested;
+        bool _inputHasContent;
         bool _waitActive;
 
         [Inject]
@@ -62,8 +66,10 @@ namespace ChillAI.View.Character
         {
             _signalBus?.Subscribe<EmojiChatResponseSignal>(OnEmojiChatResponse);
             _signalBus?.Subscribe<ChatInputFocusSignal>(OnChatInputFocus);
+            _signalBus?.Subscribe<ChatInputContentSignal>(OnChatInputContent);
             _lastProcessingState = _chatController != null && _chatController.IsProcessing;
             _tiltRequested = false;
+            _inputHasContent = false;
             ApplyWaitState(_lastProcessingState);
         }
 
@@ -71,6 +77,7 @@ namespace ChillAI.View.Character
         {
             _signalBus?.TryUnsubscribe<EmojiChatResponseSignal>(OnEmojiChatResponse);
             _signalBus?.TryUnsubscribe<ChatInputFocusSignal>(OnChatInputFocus);
+            _signalBus?.TryUnsubscribe<ChatInputContentSignal>(OnChatInputContent);
         }
 
         void Update()
@@ -154,14 +161,27 @@ namespace ChillAI.View.Character
             RefreshTiltState();
         }
 
+        void OnChatInputContent(ChatInputContentSignal signal)
+        {
+            if (signal == null)
+                return;
+
+            _inputHasContent = signal.HasContent;
+            RefreshTiltState();
+        }
+
         void RefreshTiltState()
         {
             if (animator == null)
                 return;
 
-            // Wait (thinking) blocks tilt (listening). The animator controller
-            // only allows tilt -> idle -> wait, so tilt must be cleared first.
-            var effective = _tiltRequested && !_waitActive;
+            // Tilt requires input focus. When requireNonEmptyInputForTilt is on,
+            // it also requires the input to CURRENTLY contain at least one
+            // character — if the user types then deletes everything, tilt goes
+            // back to false. Wait (thinking) still takes priority and clears
+            // tilt so the animator can transition tilt -> idle -> wait.
+            var contentOk = !requireNonEmptyInputForTilt || _inputHasContent;
+            var effective = _tiltRequested && contentOk && !_waitActive;
             if (_lastTiltState == effective)
                 return;
 
