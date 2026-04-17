@@ -3,7 +3,7 @@
     <ui:VisualElement name="active-process-hud-root" class="active-process-hud-root" style="bottom: 4px; right: 30px;">
         <ui:Label name="active-process-hud" text="" class="active-process-hud"/>
     </ui:VisualElement>
-    <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -35px;">
+    <ui:VisualElement name="menu-popup" class="menu-popup hidden" style="translate: 0 -65px;">
         <ui:Button name="settings-btn" text="⚙ 设置" class="menu-item"/>
         <ui:Button name="profile-insight-btn" text="👁 我眼中的你" class="menu-item"/>
         <ui:Button name="chat-history-btn" text="🕘 聊天记录" class="menu-item"/>

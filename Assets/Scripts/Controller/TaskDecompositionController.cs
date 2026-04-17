@@ -211,11 +211,51 @@ namespace ChillAI.Controller
             _taskModel.Save();
         }
 
+        public void SetBigEventCategory(string bigEventId, TaskCategory category)
+        {
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null || bigEvent.Category == category) return;
+            _taskModel.SetBigEventCategory(bigEventId, category);
+            _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.CategoryChanged));
+            _taskModel.Save();
+        }
+
+        /// <summary>
+        /// "现在就做！": move a Wanting-category big task into Doing AND put it at
+        /// the front of the BigEvents list in one save. The Quest virtual item is
+        /// rendered first by the view but is not in BigEvents, so index 0 here is
+        /// correctly "first real big task". Fires CategoryChanged + BigEventsReordered.
+        /// </summary>
+        public void MoveBigEventToDoingFront(string bigEventId)
+        {
+            var bigEvent = _taskModel.GetBigEvent(bigEventId);
+            if (bigEvent == null) return;
+
+            bool categoryChanged = bigEvent.Category != TaskCategory.Doing;
+            bool wasAlreadyFirst = _taskModel.BigEvents.Count > 0 &&
+                                   _taskModel.BigEvents[0].Id == bigEventId;
+
+            if (!categoryChanged && wasAlreadyFirst) return;
+
+            if (categoryChanged)
+                _taskModel.SetBigEventCategory(bigEventId, TaskCategory.Doing);
+            if (!wasAlreadyFirst)
+                _taskModel.MoveBigEventToIndex(bigEventId, 0);
+
+            if (categoryChanged)
+                _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.CategoryChanged));
+            if (!wasAlreadyFirst)
+                _signalBus.Fire(new BigEventChangedSignal(bigEventId, BigEventChangeType.BigEventsReordered));
+
+            _taskModel.Save();
+        }
+
         public string PromoteSubTaskToBigEvent(string bigEventId, string subTaskId, int insertIndex)
         {
+            var parentCategory = _taskModel.GetBigEvent(bigEventId)?.Category ?? TaskCategory.Wanting;
             var subTask = _taskModel.DetachSubTask(bigEventId, subTaskId);
             if (subTask == null) return null;
-            var newBigEvent = new BigEvent(subTask.Title);
+            var newBigEvent = new BigEvent(subTask.Title) { Category = parentCategory };
             int n = _taskModel.BigEvents.Count;
             insertIndex = Mathf.Clamp(insertIndex, 0, n);
             _taskModel.InsertBigEvent(insertIndex, newBigEvent);

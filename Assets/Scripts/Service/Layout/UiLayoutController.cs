@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using ChillAI.Core.Layout;
+using ChillAI.Model.TaskDecomposition;
 using ChillAI.Service.Platform;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -149,6 +150,27 @@ namespace ChillAI.Service.Layout
                 return true;
             }
             ratio = 0f;
+            return false;
+        }
+
+        // ── Selected task category tab ────────────────────────────────────────────
+
+        public void SetTaskSelectedCategory(TaskCategory category)
+        {
+            EnsureLoaded();
+            _snapshot.hasTaskSelectedCategory = true;
+            _snapshot.taskSelectedCategory = (int)category;
+        }
+
+        public bool TryGetTaskSelectedCategory(out TaskCategory category)
+        {
+            EnsureLoaded();
+            if (_snapshot.hasTaskSelectedCategory)
+            {
+                category = (TaskCategory)_snapshot.taskSelectedCategory;
+                return true;
+            }
+            category = TaskCategory.Doing;
             return false;
         }
 

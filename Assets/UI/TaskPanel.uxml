@@ -1,24 +1,34 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="project://database/Assets/UI/TaskPanel.uss?fileID=7433441132597879392&amp;guid=9e89d11055c06aa43aeee1c565879ac7&amp;type=3#TaskPanel"/>
     <ui:VisualElement name="panel" class="panel hidden" style="translate: 0 -25px;">
-        <ui:VisualElement class="panel-header">
-            <ui:Label text="待办事项列表" class="panel-title"/>
-            <ui:Button name="close-btn" text="✕" class="close-btn"/>
-        </ui:VisualElement>
-        <ui:Label name="status-label" class="status-label"/>
-        <ui:VisualElement class="columns">
-            <ui:VisualElement class="col-left">
-                <ui:ScrollView name="list-scroll" class="list-scroll"/>
-                <ui:Button name="add-list-btn" text="＋" class="add-list-btn"/>
+        <ui:VisualElement name="side-tabs" class="side-tabs" picking-mode="Ignore">
+            <ui:VisualElement name="tab-doing" class="side-tab side-tab--doing side-tab--selected">
+                <ui:Label class="side-tab-label" text="正在做"/>
             </ui:VisualElement>
-            <ui:VisualElement name="col-divider" class="col-divider">
-                <ui:VisualElement class="col-divider-line"/>
-            </ui:VisualElement>
-            <ui:VisualElement class="col-right">
-                <ui:ScrollView name="task-scroll" class="task-scroll"/>
+            <ui:VisualElement name="tab-wanting" class="side-tab side-tab--wanting">
+                <ui:Label class="side-tab-label" text="想要做"/>
             </ui:VisualElement>
         </ui:VisualElement>
-        <ui:VisualElement name="task-resize-handle" class="panel-resize-handle"/>
+        <ui:VisualElement name="panel-body" class="panel-body">
+            <ui:VisualElement class="panel-header">
+                <ui:Label name="panel-title" text="正在做的事" class="panel-title"/>
+                <ui:Button name="close-btn" text="✕" class="close-btn"/>
+            </ui:VisualElement>
+            <ui:Label name="status-label" class="status-label"/>
+            <ui:VisualElement class="columns">
+                <ui:VisualElement class="col-left">
+                    <ui:ScrollView name="list-scroll" class="list-scroll"/>
+                    <ui:Button name="add-list-btn" text="＋" class="add-list-btn"/>
+                </ui:VisualElement>
+                <ui:VisualElement name="col-divider" class="col-divider">
+                    <ui:VisualElement class="col-divider-line"/>
+                </ui:VisualElement>
+                <ui:VisualElement class="col-right">
+                    <ui:ScrollView name="task-scroll" class="task-scroll"/>
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement name="task-resize-handle" class="panel-resize-handle"/>
+        </ui:VisualElement>
     </ui:VisualElement>
     <ui:Button name="toggle-btn" text="Todo" class="toggle-btn" style="translate: -60px -60px; bottom: 0; right: 0;"/>
 </ui:UXML>

@@ -26,6 +26,13 @@ namespace ChillAI.Model.TaskDecomposition
             return bigEvent;
         }
 
+        public void SetBigEventCategory(string bigEventId, TaskCategory category)
+        {
+            var bigEvent = GetBigEvent(bigEventId);
+            if (bigEvent != null)
+                bigEvent.Category = category;
+        }
+
         public void RemoveBigEvent(string bigEventId)
         {
             _bigEvents.RemoveAll(e => e.Id == bigEventId);
@@ -127,7 +134,7 @@ namespace ChillAI.Model.TaskDecomposition
                 var data = new SaveData();
                 foreach (var be in _bigEvents)
                 {
-                    var bed = new BigEventData { id = be.Id, title = be.Title };
+                    var bed = new BigEventData { id = be.Id, title = be.Title, category = (int)be.Category };
                     foreach (var st in be.SubTasks)
                         bed.subTasks.Add(new SubTaskPersist
                         {
@@ -160,7 +167,7 @@ namespace ChillAI.Model.TaskDecomposition
                 _bigEvents.Clear();
                 foreach (var bed in data.bigEvents)
                 {
-                    var be = new BigEvent(bed.id, bed.title);
+                    var be = new BigEvent(bed.id, bed.title) { Category = (TaskCategory)bed.category };
                     var subTasks = new List<SubTask>();
                     if (bed.subTasks != null)
                     {
@@ -192,6 +199,8 @@ namespace ChillAI.Model.TaskDecomposition
         {
             public string id;
             public string title;
+            // 0 = Wanting (default for legacy rows), 1 = Doing. See TaskCategory.
+            public int category;
             public List<SubTaskPersist> subTasks = new();
         }
 

@@ -13,6 +13,7 @@ namespace ChillAI.Model.TaskDecomposition
         public IReadOnlyList<SubTask> SubTasks => _subTasks;
         public bool IsProcessing { get; set; }
         public string ErrorMessage { get; set; } = "";
+        public TaskCategory Category { get; set; } = TaskCategory.Wanting;
 
         public int CompletedCount => _subTasks.Count(s => s.IsCompleted);
         public int TotalCount => _subTasks.Count;

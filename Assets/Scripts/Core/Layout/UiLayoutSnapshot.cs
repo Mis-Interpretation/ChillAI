@@ -57,6 +57,12 @@ namespace ChillAI.Core.Layout
 
         public bool hasTaskColLeftRatio;
         public float taskColLeftRatio;
+
+        // Persisted last-selected category side tab (0 = Wanting, 1 = Doing).
+        // NOTE: currently persisted-on-change but not applied at startup — reserved
+        // for future product decision to restore across sessions.
+        public bool hasTaskSelectedCategory;
+        public int taskSelectedCategory;
     }
 
     [Serializable]

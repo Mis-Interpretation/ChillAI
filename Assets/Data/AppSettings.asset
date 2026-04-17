@@ -17,5 +17,5 @@ MonoBehaviour:
   enableClickThrough: 1
   taskPanelDragLongPressMs: 100
   openaiApiKey: 
-  debugMode: 1
+  debugMode: 0
   usageAutoSaveIntervalMinutes: 5

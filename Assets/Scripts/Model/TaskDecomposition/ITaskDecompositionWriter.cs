@@ -5,6 +5,7 @@ namespace ChillAI.Model.TaskDecomposition
     public interface ITaskDecompositionWriter : ITaskDecompositionReader
     {
         BigEvent AddBigEvent(string title);
+        void SetBigEventCategory(string bigEventId, TaskCategory category);
         void RemoveBigEvent(string bigEventId);
         void SetBigEventSubTasks(string bigEventId, List<SubTask> subTasks);
         void SetBigEventProcessing(string bigEventId, bool isProcessing);

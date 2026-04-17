@@ -1,4 +1,5 @@
 using System;
+using ChillAI.Model.TaskDecomposition;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -20,7 +21,9 @@ namespace ChillAI.View.TaskUI
         ReorderBigEvent,
         PromoteToList,
         MergeSubTaskIntoBigEvent,
-        DemoteToSubTask
+        DemoteToSubTask,
+        /// <summary>BigEvent dropped onto a category side tab — assign to that category.</summary>
+        ReassignCategory
     }
 
     public struct DropTarget
@@ -28,6 +31,8 @@ namespace ChillAI.View.TaskUI
         public DropTargetType Type;
         public int InsertIndex;
         public string TargetBigEventId;
+        /// <summary>Target category when Type == ReassignCategory.</summary>
+        public TaskCategory TargetCategory;
         // Visual feedback positioning (panel coordinates)
         public float IndicatorY;
         public float IndicatorLeft;
@@ -44,6 +49,8 @@ namespace ChillAI.View.TaskUI
         readonly Func<Vector2, DragItemInfo, DropTarget> _resolveDropTarget;
         readonly Action<DragItemInfo, DropTarget> _onDragEnd;
         readonly Action _onDragStarted;
+        /// <summary>Always invoked when the drag ends (valid drop OR cancel OR release outside).</summary>
+        readonly Action _onDragFinished;
         readonly VisualElement _overlayRoot;
         readonly long _longPressMs;
 
@@ -67,12 +74,14 @@ namespace ChillAI.View.TaskUI
             Action<DragItemInfo, DropTarget> onDragEnd,
             Action onDragStarted,
             VisualElement overlayRoot,
-            long longPressMs = 300)
+            long longPressMs = 300,
+            Action onDragFinished = null)
         {
             _getItemInfo = getItemInfo;
             _resolveDropTarget = resolveDropTarget;
             _onDragEnd = onDragEnd;
             _onDragStarted = onDragStarted;
+            _onDragFinished = onDragFinished;
             _overlayRoot = overlayRoot;
             _longPressMs = Math.Max(50L, Math.Min(3000L, longPressMs));
         }
@@ -151,13 +160,18 @@ namespace ChillAI.View.TaskUI
 
                 if (dropTarget.Type != DropTargetType.None)
                     _onDragEnd?.Invoke(_dragInfo, dropTarget);
+
+                _onDragFinished?.Invoke();
             }
         }
 
         void OnPointerCaptureOut(PointerCaptureOutEvent evt)
         {
             if (_state == State.Dragging)
+            {
                 Cleanup();
+                _onDragFinished?.Invoke();
+            }
         }
 
         void OnLongPress()
@@ -208,6 +222,64 @@ namespace ChillAI.View.TaskUI
             _ghost.Add(ghostLabel);
 
             _overlayRoot.Add(_ghost);
+        }
+
+        /// <summary>True while this manipulator owns an active drag.</summary>
+        public bool IsDragging => _state == State.Dragging;
+
+        /// <summary>
+        /// Detach an in-progress drag so its state (pointer capture, ghost, indicator,
+        /// drag info) can be handed off to another manipulator. The ghost and indicator
+        /// are NOT destroyed — the caller is responsible for handing them to an
+        /// AdoptDrag() call or removing them from the hierarchy.
+        /// </summary>
+        public (int pointerId, Vector2 lastPanelPos, DragItemInfo info,
+                VisualElement ghost, VisualElement indicator)
+            DetachForTransfer(Vector2 currentPanelPos)
+        {
+            if (_state != State.Dragging)
+                return default;
+
+            var result = (_pointerId, currentPanelPos, _dragInfo, _ghost, _indicator);
+
+            target.RemoveFromClassList("drag-source-dimmed");
+
+            // Flip to Idle BEFORE ReleasePointer so OnPointerCaptureOut's
+            // `if (_state == State.Dragging) Cleanup()` is a no-op and the ghost
+            // we're handing off isn't destroyed.
+            _ghost = null;
+            _indicator = null;
+            _longPressSchedule?.Pause();
+            _longPressSchedule = null;
+            _state = State.Idle;
+
+            if (target.HasPointerCapture(_pointerId))
+                target.ReleasePointer(_pointerId);
+
+            return result;
+        }
+
+        /// <summary>
+        /// Pick up a drag-in-progress that was previously detached from another
+        /// manipulator. Captures the pointer on this manipulator's target and
+        /// wires up the existing ghost/indicator as our own.
+        /// </summary>
+        public void AdoptDrag(int pointerId, Vector2 currentPanelPos, DragItemInfo info,
+                              VisualElement ghost, VisualElement indicator)
+        {
+            if (_state != State.Idle) return;
+
+            _pointerId = pointerId;
+            _dragInfo = info;
+            _ghost = ghost;
+            _indicator = indicator;
+            _state = State.Dragging;
+
+            target.CapturePointer(pointerId);
+            target.AddToClassList("drag-source-dimmed");
+
+            UpdateGhostPosition(currentPanelPos);
+            UpdateDropIndicator(currentPanelPos);
         }
 
         void CreateIndicator()
