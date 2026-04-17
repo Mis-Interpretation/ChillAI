@@ -418,9 +418,12 @@ namespace ChillAI.View.TaskUI
         {
             CommitEditMode();
             if (_inlineInputRow != null) return;
+            // New big tasks inherit the currently-viewed category so they appear
+            // in the same list the user is looking at.
+            var categoryForNew = _selectedCategory;
             ShowInlineInput(_listScroll, text =>
             {
-                var id = _controller.CreateBigEvent(text);
+                var id = _controller.CreateBigEvent(text, categoryForNew);
                 if (id != null)
                 {
                     _selectedBigEventId = id;

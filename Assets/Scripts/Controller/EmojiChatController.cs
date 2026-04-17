@@ -102,12 +102,21 @@ namespace ChillAI.Controller
                 _taskRouterProfile.maxHistoryToSend = 10;
                 _taskRouterProfile.systemPrompt =
                     "你是一个任务管理助手。用户在聊天中提到了想做的事情，你需要根据已有的任务列表来决定该怎么处理。\n\n" +
+                    "任务系统有两种分类：\n" +
+                    "- \"doing\"（正在做的事）：用户正在/即将/今天就要行动的事；已经开始推进的事；有明确近期时间点的事。" +
+                    "例如：\"我在写报告\"、\"今天要完成X\"、\"开始学Y了\"、\"下午要去Z\"。\n" +
+                    "- \"wanting\"（想要做的事）：愿望、计划、以后/有空想做的事；没有明确近期时间点的事。" +
+                    "例如：\"以后想去旅行\"、\"打算学钢琴\"、\"想读这本书\"、\"有空要整理房间\"。\n" +
+                    "如果用户措辞含糊无法判断，默认 \"wanting\"。\n\n" +
                     "规则：\n" +
                     "1. 如果用户提到的事情和已有任务的含义相似或重复，返回 action:\"none\"\n" +
                     "2. 如果用户提到的事情是某个已有任务的子任务（属于某个大任务的一部分），返回 action:\"add_subtask\"，" +
                     "并在 target_id 填写对应大任务的 id，title 填写子任务标题\n" +
                     "3. 只有当用户提到的事情和所有已有任务都无关时，才返回 action:\"create\"，" +
                     "title 只填写一个大任务标题，不要返回 subtasks\n\n" +
+                    "category 字段：\n" +
+                    "- action 为 \"create\" 时，根据上述定义选择 \"doing\" 或 \"wanting\"。\n" +
+                    "- action 为 \"add_subtask\" 或 \"none\" 时，category 填 \"wanting\"（会被忽略）。\n\n" +
                     "使用中文填写 title。Return ONLY a JSON object.";
                 _taskRouterProfile.useJsonSchema = true;
                 _taskRouterProfile.schemaName = "task_decision";
@@ -115,8 +124,9 @@ namespace ChillAI.Controller
                     "{\"type\":\"object\",\"properties\":{" +
                     "\"action\":{\"type\":\"string\",\"enum\":[\"none\",\"create\",\"add_subtask\"]}," +
                     "\"target_id\":{\"type\":\"string\"}," +
-                    "\"title\":{\"type\":\"string\"}" +
-                    "},\"required\":[\"action\",\"target_id\",\"title\"],\"additionalProperties\":false}";
+                    "\"title\":{\"type\":\"string\"}," +
+                    "\"category\":{\"type\":\"string\",\"enum\":[\"doing\",\"wanting\"]}" +
+                    "},\"required\":[\"action\",\"target_id\",\"title\",\"category\"],\"additionalProperties\":false}";
                 return _taskRouterProfile;
             }
         }
@@ -220,11 +230,13 @@ namespace ChillAI.Controller
                     case "create":
                         if (!string.IsNullOrWhiteSpace(decision.title))
                         {
-                            var id = _taskController.CreateBigEvent(decision.title);
+                            var cat = ParseCategory(decision.category);
+                            var id = _taskController.CreateBigEvent(decision.title, cat);
                             if (id != null)
                                 _taskController.RequestDecomposition(id);
                             _signalBus.Fire(new TaskAddedViaChatSignal(id));
-                            Debug.Log($"[ChillAI] [task-router] Created: \"{decision.title}\" and delegated decomposition.");
+                            Debug.Log($"[ChillAI] [task-router] Created: \"{decision.title}\" " +
+                                      $"(category:{cat}) and delegated decomposition.");
                         }
                         break;
 
@@ -262,7 +274,8 @@ namespace ChillAI.Controller
                 sb.AppendLine("[Current tasks with subtasks:]");
                 foreach (var e in events)
                 {
-                    sb.AppendLine($"- id:{e.Id} title:\"{e.Title}\"");
+                    var catStr = e.Category == TaskCategory.Doing ? "doing" : "wanting";
+                    sb.AppendLine($"- id:{e.Id} category:{catStr} title:\"{e.Title}\"");
                     if (e.SubTasks.Count > 0)
                     {
                         var subtaskTitles = new List<string>();
@@ -340,7 +353,15 @@ namespace ChillAI.Controller
             public string action;
             public string target_id;
             public string title;
+            public string category; // "doing" | "wanting" — only used when action=="create"
             public List<string> subtasks;
+        }
+
+        static TaskCategory ParseCategory(string s)
+        {
+            return string.Equals(s, "doing", StringComparison.OrdinalIgnoreCase)
+                ? TaskCategory.Doing
+                : TaskCategory.Wanting; // default covers null, "wanting", and unknown strings
         }
     }
 }

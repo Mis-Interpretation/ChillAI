@@ -44,11 +44,13 @@ namespace ChillAI.Controller
 
         AgentProfile TaskProfile => _agentRegistry.GetProfile(AgentRegistry.Ids.TaskDecomposition);
 
-        public string CreateBigEvent(string title)
+        public string CreateBigEvent(string title, TaskCategory category = TaskCategory.Wanting)
         {
             if (string.IsNullOrWhiteSpace(title)) return null;
 
             var bigEvent = _taskModel.AddBigEvent(title);
+            if (category != TaskCategory.Wanting)
+                _taskModel.SetBigEventCategory(bigEvent.Id, category);
             _signalBus.Fire(new BigEventChangedSignal(bigEvent.Id, BigEventChangeType.Added));
             _taskModel.Save();
             return bigEvent.Id;
