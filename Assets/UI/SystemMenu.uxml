@@ -16,19 +16,14 @@
             <ui:Button name="settings-close-btn" text="✕" class="close-btn"/>
         </ui:VisualElement>
         <ui:VisualElement class="setting-row">
-            <ui:Label text="透明度" class="setting-label"/>
-            <ui:Slider name="alpha-slider" low-value="0.1" high-value="1" class="setting-slider"/>
-            <ui:Label name="alpha-value" class="setting-value"/>
-        </ui:VisualElement>
-        <ui:VisualElement class="setting-row">
             <ui:Label text="帧率" class="setting-label"/>
             <ui:SliderInt name="fps-slider" low-value="10" high-value="60" class="setting-slider"/>
             <ui:Label name="fps-value" class="setting-value"/>
         </ui:VisualElement>
         <ui:VisualElement class="setting-row">
-            <ui:Label text="消息上限" class="setting-label"/>
-            <ui:SliderInt name="bubbles-slider" low-value="5" high-value="100" class="setting-slider"/>
-            <ui:Label name="bubbles-value" class="setting-value"/>
+            <ui:Label text="音量" class="setting-label"/>
+            <ui:Slider name="volume-slider" low-value="0" high-value="1" class="setting-slider"/>
+            <ui:Label name="volume-value" class="setting-value"/>
         </ui:VisualElement>
         <ui:VisualElement class="setting-row">
             <ui:Label text="自动任务" class="setting-label"/>

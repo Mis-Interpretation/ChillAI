@@ -12,6 +12,9 @@ namespace ChillAI.Core.Settings
         // Window
         public int targetFrameRate;
 
+        // Audio
+        public float globalVolume;
+
         // Emoji Chat
         public int maxChatBubbles;
         public bool autoGenerateTasks;

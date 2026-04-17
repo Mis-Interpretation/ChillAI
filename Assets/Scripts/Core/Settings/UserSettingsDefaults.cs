@@ -13,6 +13,10 @@ namespace ChillAI.Core.Settings
         [Range(10, 60)]
         public int targetFrameRate = 30;
 
+        [Header("Audio")]
+        [Range(0f, 1f)]
+        public float globalVolume = 1f;
+
         [Header("Emoji Chat")]
         [Range(5, 100)]
         public int maxChatBubbles = 20;
@@ -58,6 +62,7 @@ namespace ChillAI.Core.Settings
             return new UserSettingsData
             {
                 targetFrameRate = targetFrameRate,
+                globalVolume = globalVolume,
                 maxChatBubbles = maxChatBubbles,
                 autoGenerateTasks = autoGenerateTasks,
                 knowsDragMenu = knowsDragMenu,

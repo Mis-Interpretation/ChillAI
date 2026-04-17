@@ -48,6 +48,8 @@ namespace ChillAI.Core.Settings
                 Save();
                 Debug.Log($"[ChillAI] Default user settings created at {FilePath}");
             }
+
+            AudioListener.volume = Mathf.Clamp01(Data.globalVolume);
         }
 
         public void Save()

@@ -13,6 +13,7 @@ MonoBehaviour:
   m_Name: UserSettingsDefaults
   m_EditorClassIdentifier: ChillAI::ChillAI.Core.Settings.UserSettingsDefaults
   targetFrameRate: 30
+  globalVolume: 1
   maxChatBubbles: 20
   autoGenerateTasks: 1
   knowsDragMenu: 0
@@ -22,3 +23,9 @@ MonoBehaviour:
   taskPanelMinHeight: 220
   chatPanelMinWidth: 220
   chatPanelMinHeight: 160
+  profilePanelMinWidth: 320
+  profilePanelMinHeight: 220
+  profileChatThreshold: 10
+  profileTaskThreshold: 3
+  profileTimeThresholdMinutes: 60
+  profileMaxChatMessages: 20

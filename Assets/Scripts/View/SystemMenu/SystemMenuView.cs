@@ -18,8 +18,6 @@ namespace ChillAI.View.SystemMenu
     [RequireComponent(typeof(UIDocument))]
     public class SystemMenuView : MonoBehaviour
     {
-        [Inject] IWindowService _windowService;
-        [Inject] AppSettings _appSettings;
         [Inject] UserSettingsService _userSettings;
         [Inject] QuestController _questController;
         [Inject] DisplaySwitchController _displaySwitchController;
@@ -40,14 +38,12 @@ namespace ChillAI.View.SystemMenu
         Label _processHud;
 
         // Settings controls
-        Slider _alphaSlider;
         SliderInt _fpsSlider;
-        SliderInt _bubblesSlider;
+        Slider _volumeSlider;
         Toggle _autoTaskToggle;
         Toggle _dragGuideToggle;
-        Label _alphaValue;
         Label _fpsValue;
-        Label _bubblesValue;
+        Label _volumeValue;
 
         // Settings header drag
         WindowDragManipulator _settingsDragManipulator;
@@ -111,16 +107,13 @@ namespace ChillAI.View.SystemMenu
             // Settings sliders
             var data = _userSettings.Data;
 
-            _alphaSlider = root.Q<Slider>("alpha-slider");
             _fpsSlider = root.Q<SliderInt>("fps-slider");
-            _bubblesSlider = root.Q<SliderInt>("bubbles-slider");
-            _alphaValue = root.Q<Label>("alpha-value");
             _fpsValue = root.Q<Label>("fps-value");
-            _bubblesValue = root.Q<Label>("bubbles-value");
+            _volumeSlider = root.Q<Slider>("volume-slider");
+            _volumeValue = root.Q<Label>("volume-value");
 
-            _alphaSlider.value = _appSettings.windowAlpha;
             _fpsSlider.value = data.targetFrameRate;
-            _bubblesSlider.value = data.maxChatBubbles;
+            _volumeSlider.value = Mathf.Clamp01(data.globalVolume);
             UpdateValueLabels();
 
             _autoTaskToggle = root.Q<Toggle>("auto-task-toggle");
@@ -131,9 +124,8 @@ namespace ChillAI.View.SystemMenu
             _dragGuideToggle.value = data.knowsDragMenu;
             _dragGuideToggle.RegisterValueChangedCallback(OnDragGuideChanged);
 
-            _alphaSlider.RegisterValueChangedCallback(OnAlphaChanged);
             _fpsSlider.RegisterValueChangedCallback(OnFpsChanged);
-            _bubblesSlider.RegisterValueChangedCallback(OnBubblesChanged);
+            _volumeSlider.RegisterValueChangedCallback(OnVolumeChanged);
 
             // Click outside menu to close
             root.RegisterCallback<PointerDownEvent>(OnRootPointerDown);
@@ -272,18 +264,8 @@ namespace ChillAI.View.SystemMenu
 
         void UpdateValueLabels()
         {
-            _alphaValue.text = $"{_alphaSlider.value:F1}";
             _fpsValue.text = $"{_fpsSlider.value}";
-            _bubblesValue.text = $"{_bubblesSlider.value}";
-        }
-
-        void OnAlphaChanged(ChangeEvent<float> evt)
-        {
-            _appSettings.windowAlpha = evt.newValue;
-            _alphaValue.text = $"{evt.newValue:F1}";
-#if !UNITY_EDITOR
-            _windowService.MakeTransparent(evt.newValue);
-#endif
+            _volumeValue.text = $"{Mathf.RoundToInt(_volumeSlider.value * 100)}%";
         }
 
         void OnFpsChanged(ChangeEvent<int> evt)
@@ -294,10 +276,12 @@ namespace ChillAI.View.SystemMenu
             _userSettings.Save();
         }
 
-        void OnBubblesChanged(ChangeEvent<int> evt)
+        void OnVolumeChanged(ChangeEvent<float> evt)
         {
-            _userSettings.Data.maxChatBubbles = evt.newValue;
-            _bubblesValue.text = $"{evt.newValue}";
+            var v = Mathf.Clamp01(evt.newValue);
+            _userSettings.Data.globalVolume = v;
+            _volumeValue.text = $"{Mathf.RoundToInt(v * 100)}%";
+            AudioListener.volume = v;
             _userSettings.Save();
         }
 
